@@ -18,7 +18,6 @@ using FlowDirection = System.Windows.FlowDirection;
 using FontFamily = System.Windows.Media.FontFamily;
 using Pen = System.Windows.Media.Pen;
 using Point = System.Windows.Point;
-using Size = System.Windows.Size;
 
 namespace MetrikLite;
 
@@ -44,19 +43,21 @@ public static class IconRenderer
         using (var context = visual.RenderOpen())
         {
             var text = percent.ToString(CultureInfo.InvariantCulture);
-            var room = Math.Max(1, px - 2.0);
-            var em = px * 0.92;
-            var measurement = Measure(text, em);
+            var room = Math.Max(1, px - 1.0);
+            var em = px * 1.10;
+            var glyphBounds = MeasureGlyphBounds(text, em);
 
-            // 同时约束宽度和字面高度：单数字不会显得太小，多位数字也不会挤出边界。
-            var scale = Math.Min(room / measurement.Width, (px - 1.0) / measurement.Height);
-            em *= Math.Clamp(scale, 0.55, 1.35);
-            measurement = Measure(text, em);
-
+            // 用实际字形边界而不是 FormattedText 的行盒高度测量。
+            // 行盒包含额外的字体留白，会把 10 这类两位数缩得过小。
+            var scale = Math.Min(
+                room / Math.Max(1, glyphBounds.Width),
+                room / Math.Max(1, glyphBounds.Height));
+            em *= Math.Clamp(scale, 0.65, 1.35);
+            glyphBounds = MeasureGlyphBounds(text, em);
             var formatted = BuildFormatted(text, em, Brushes.Black);
             var origin = new Point(
-                (px - measurement.Width) / 2,
-                px / 2 - formatted.Baseline + em * 0.36);
+                px / 2 - glyphBounds.Left - glyphBounds.Width / 2,
+                px / 2 - glyphBounds.Top - glyphBounds.Height / 2 + em * 0.045);
             var brush = new SolidColorBrush(color);
             brush.Freeze();
 
@@ -137,10 +138,10 @@ public static class IconRenderer
         => new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
             NumberTypeface, em, brush, 1.0);
 
-    private static Size Measure(string text, double em)
+    private static Rect MeasureGlyphBounds(string text, double em)
     {
         var formatted = BuildFormatted(text, em, Brushes.Black);
-        return new Size(formatted.Width, formatted.Height);
+        return formatted.BuildGeometry(new Point(0, 0)).Bounds;
     }
 
     private static Geometry BuildTextGeometry(string text, double em, Point origin)
