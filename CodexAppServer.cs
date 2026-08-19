@@ -28,8 +28,8 @@
 //
 // 【codex 可执行文件的解析顺序】（ResolveCodexCommand）
 //   1. 环境变量 CODEX_BINARY（用户显式指定，调试用）
-//   2. PATH 中的 codex.exe / codex.cmd / codex.bat（winget 安装会把包目录
-//      加进用户 PATH，里面的 codex.cmd 就是 shim）
+//   2. PATH 中的 codex.cmd / codex.bat / codex.exe（优先批处理 shim，避免
+//      直接命中受 MSIX 保护的 WindowsApps\codex.exe）
 //   3. %APPDATA%\npm\codex.cmd（npm 全局安装，Metrik 的默认路径）
 //   4. winget 包目录直查 %LOCALAPPDATA%\Microsoft\WinGet\Packages\
 //      OpenAI.Codex_*\codex-x86_64-pc-windows-msvc.exe（取名字序最大=最新）
@@ -80,7 +80,7 @@ public static class CodexAppServer
         // ② 扫描 PATH（进程环境里的 Path 是 系统+用户 合并结果）
         var pathDirs = (Environment.GetEnvironmentVariable("PATH") ?? "")
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        foreach (var ext in new[] { "codex.exe", "codex.cmd", "codex.bat" })
+        foreach (var ext in new[] { "codex.cmd", "codex.bat", "codex.exe" })
         {
             foreach (var dir in pathDirs)
             {
@@ -89,6 +89,12 @@ public static class CodexAppServer
                     var candidate = Path.Combine(dir, ext);
                     if (File.Exists(candidate))
                     {
+                        if (IsProtectedWindowsAppsPath(candidate))
+                        {
+                            Log.Info($"skip protected Codex path: {candidate}");
+                            continue;
+                        }
+
                         return WrapIfNeeded(candidate);
                     }
                 }
@@ -137,6 +143,9 @@ public static class CodexAppServer
            script.EndsWith(".bat", StringComparison.OrdinalIgnoreCase)
             ? (Environment.ExpandEnvironmentVariables("%SystemRoot%\\System32\\cmd.exe"), $"/D /C \"{script}\"")
             : (script, "");
+
+    private static bool IsProtectedWindowsAppsPath(string path)
+        => path.Contains(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase);
 
     // ---------------------------------------------------------------
     // 配额读取主流程
