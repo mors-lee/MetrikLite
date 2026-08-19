@@ -8,6 +8,7 @@ using Microsoft.Win32;
 using WinForms = System.Windows.Forms;
 using Drawing = System.Drawing;
 using Application = System.Windows.Application;
+using WpfMessageBox = System.Windows.MessageBox;
 
 namespace MetrikLite;
 
@@ -204,12 +205,12 @@ public sealed class TrayHost : IDisposable
     private static string BuildAgentTooltip(AgentQuota agent)
     {
         var p = agent.Primary;
-        var parts = new List<string> { $"{agent.DisplayName} 剩余 {p.RemainingPercent:0.#}%" };
+        var lines = new List<string> { $"{agent.DisplayName} 剩余 {p.RemainingPercent:0.#}%" };
         if (p.ResetsAtMs is long reset)
         {
-            parts.Add($"重置 {DateTimeOffset.FromUnixTimeMilliseconds(reset).ToLocalTime():MM-dd HH:mm}");
+            lines.Add($"重置 {DateTimeOffset.FromUnixTimeMilliseconds(reset).ToLocalTime():MM-dd HH:mm}");
         }
-        return string.Join(" · ", parts);
+        return string.Join("\n", lines);
     }
 
     private static string Truncate(string s) => s.Length <= 63 ? s : s[..63];
@@ -235,6 +236,10 @@ public sealed class TrayHost : IDisposable
         var refresh = new WinForms.ToolStripMenuItem("立即刷新") { Name = "refresh" };
         refresh.Click += (_, _) => RefreshSafe();
         menu.Items.Add(refresh);
+
+        var checkUpdate = new WinForms.ToolStripMenuItem("检查更新") { Name = "check-update" };
+        checkUpdate.Click += (_, _) => _ = CheckForUpdatesAsync(checkUpdate);
+        menu.Items.Add(checkUpdate);
         menu.Items.Add(new WinForms.ToolStripSeparator());
 
         var lightItem = new WinForms.ToolStripMenuItem("浅色图标（深色任务栏）")
@@ -297,6 +302,50 @@ public sealed class TrayHost : IDisposable
             Application.Current.Shutdown();
         };
         menu.Items.Add(exit);
+    }
+
+    private async Task CheckForUpdatesAsync(WinForms.ToolStripMenuItem item)
+    {
+        item.Enabled = false;
+        item.Text = "检查更新中…";
+        try
+        {
+            var result = await UpdateChecker.CheckAsync();
+            if (result.IsUpdateAvailable)
+            {
+                var answer = WpfMessageBox.Show(
+                    $"发现新版本 v{result.LatestVersionText}。\n当前版本：v{result.CurrentVersionText}\n\n是否打开下载页面？",
+                    "MetrikLite 更新",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    UpdateChecker.OpenReleasePage(result.ReleaseUrl);
+                }
+            }
+            else
+            {
+                WpfMessageBox.Show(
+                    $"当前已是最新版本 v{result.CurrentVersionText}。",
+                    "MetrikLite 更新",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("update check failed", ex);
+            WpfMessageBox.Show(
+                "检查更新失败，请确认网络连接后重试。",
+                "MetrikLite 更新",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            item.Text = "检查更新";
+            item.Enabled = true;
+        }
     }
 
     private static void SetAutoStart(bool enable)
