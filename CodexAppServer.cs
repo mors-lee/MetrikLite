@@ -28,8 +28,9 @@
 //
 // 【codex 可执行文件的解析顺序】（ResolveCodexCommand）
 //   1. 环境变量 CODEX_BINARY（用户显式指定，调试用）
-//   2. 官方 winget 包目录和 %APPDATA%\npm\codex.cmd
-//   3. PATH 中的 codex.cmd / codex.bat / codex.exe（兼容其他安装方式）
+//   2. 用户在托盘菜单中选择的独立 Codex CLI 路径
+//   3. 官方 winget 包目录和 %APPDATA%\npm\codex.cmd
+//   4. PATH 中的 codex.cmd / codex.bat / codex.exe（兼容其他安装方式）
 //      —— PATH 中已知属于 Trae 的 ai-agent 启动器会跳过，避免加载
 //         TRAE SOLO 的 aiep_vm.dll。
 //   .cmd/.bat 必须经 cmd.exe /D /C 包装启动（Windows 批处理规则），
@@ -74,16 +75,34 @@ public static class CodexAppServer
 
     /// <summary>找到 codex 可执行文件并给出启动方式。找不到返回 null（错误已记日志）。</summary>
     /// <returns>(FileName, Arguments前缀, 是否需要cmd包装)——调用方再补 "app-server"。</returns>
-    private static (string FileName, string Args)? ResolveCodexCommand()
+    private static (string FileName, string Args)? ResolveCodexCommand(string? configuredPath)
     {
         // ① 显式环境变量
-        var explicitPath = Environment.GetEnvironmentVariable("CODEX_BINARY");
+        var explicitPath = NormalizePath(Environment.GetEnvironmentVariable("CODEX_BINARY"));
         if (!string.IsNullOrWhiteSpace(explicitPath) && File.Exists(explicitPath))
         {
             return WrapIfNeeded(explicitPath);
         }
 
-        // ② 官方 winget 包目录直查。不同版本的 Codex CLI 可能把 shim 或
+        // ② 托盘菜单选择的独立 CLI。路径保存在 %APPDATA%\MetrikLite\config.json。
+        var selectedPath = NormalizePath(configuredPath);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
+        {
+            if (IsProtectedWindowsAppsPath(selectedPath))
+            {
+                Log.Error($"configured Codex path is protected WindowsApps: {selectedPath}");
+            }
+            else if (File.Exists(selectedPath))
+            {
+                return WrapIfNeeded(selectedPath);
+            }
+            else
+            {
+                Log.Error($"configured Codex binary not found: {selectedPath}");
+            }
+        }
+
+        // ③ 官方 winget 包目录直查。不同版本的 Codex CLI 可能把 shim 或
         // 原生文件放在包根目录或版本子目录中，因此两种布局都兼容。
         try
         {
@@ -118,7 +137,7 @@ public static class CodexAppServer
             // WinGet 目录不存在或无权读取时，继续检查 npm/PATH。
         }
 
-        // ③ npm 全局 shim（官方 Codex CLI 的常见安装位置）。必须放在 PATH
+        // ④ npm 全局 shim（官方 Codex CLI 的常见安装位置）。必须放在 PATH
         // 前面，因为其他软件可能把同名 codex.exe 加入 PATH。
         var npm = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "npm", "codex.cmd");
@@ -127,7 +146,7 @@ public static class CodexAppServer
             return WrapIfNeeded(npm);
         }
 
-        // ④ 扫描 PATH（进程环境里的 Path 是系统+用户合并结果）。
+        // ⑤ 扫描 PATH（进程环境里的 Path 是系统+用户合并结果）。
         var pathDirs = (Environment.GetEnvironmentVariable("PATH") ?? "")
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         foreach (var ext in new[] { "codex.cmd", "codex.bat", "codex.exe" })
@@ -163,9 +182,12 @@ public static class CodexAppServer
             }
         }
 
-        Log.Error("codex binary not found (tried CODEX_BINARY, official WinGet package, npm, PATH)");
+        Log.Error("codex binary not found (tried CODEX_BINARY, configured path, official WinGet package, npm, PATH)");
         return null;
     }
+
+    private static string? NormalizePath(string? path)
+        => string.IsNullOrWhiteSpace(path) ? null : path.Trim().Trim('"');
 
     /// <summary>.cmd/.bat 用 cmd.exe /D /C 包装（引号包路径防空格）；.exe 直接执行。</summary>
     private static (string FileName, string Args) WrapIfNeeded(string script)
@@ -193,9 +215,10 @@ public static class CodexAppServer
     /// 失败返回空列表（错误已记日志），绝不抛出。
     /// </summary>
     /// <param name="timeout">整个会话的硬超时（含进程冷启动）。</param>
-    public static async Task<IReadOnlyList<QuotaSnapshot>> ReadAsync(TimeSpan timeout)
+    public static async Task<IReadOnlyList<QuotaSnapshot>> ReadAsync(
+        TimeSpan timeout, string? configuredPath = null)
     {
-        var resolved = ResolveCodexCommand();
+        var resolved = ResolveCodexCommand(configuredPath);
         if (resolved == null)
         {
             return Array.Empty<QuotaSnapshot>();

@@ -14,7 +14,7 @@
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)（仅构建需要）
 - 已安装并登录 Codex CLI（`codex login`）
 
-Codex 可执行文件按以下顺序查找：环境变量 `CODEX_BINARY`、官方 winget 包目录、`%APPDATA%\npm\codex.cmd`，以及 PATH 中的 `codex.exe`/`codex.cmd`。PATH 中属于 Trae Solo 的 `ai-agent` 启动器会自动跳过。
+Codex 可执行文件按以下顺序查找：环境变量 `CODEX_BINARY`、托盘菜单中选择的独立 CLI 路径、官方 winget 包目录、`%APPDATA%\npm\codex.cmd`，以及 PATH 中的 `codex.exe`/`codex.cmd`。PATH 中属于 Trae Solo 的 `ai-agent` 启动器会自动跳过。Codex 桌面版 `WindowsApps` 内置 CLI 受系统权限保护，不能由独立程序直接启动，请选择可访问的独立 Codex CLI。
 
 ## 构建与运行
 

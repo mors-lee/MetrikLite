@@ -61,7 +61,8 @@ public sealed class TrayHost : IDisposable
         _refreshing = true;
         try
         {
-            var snapshots = await CodexAppServer.ReadAsync(TimeSpan.FromSeconds(25));
+            var snapshots = await CodexAppServer.ReadAsync(
+                TimeSpan.FromSeconds(25), _config.CodexBinaryPath);
             var agents = GroupAgents(snapshots);
             _state = new TrayState(agents, DateTimeOffset.Now);
             Log.Info($"refreshed: agents={agents.Count}");
@@ -152,6 +153,17 @@ public sealed class TrayHost : IDisposable
                     percent, PercentColor(percent, capturedAgent.BrandHex), _config.LightGlyphs, px))));
         }
 
+        // 没有找到 Codex 或配额时也保留一个状态图标，用户可以右键打开菜单
+        // 设置 D 盘等位置的独立 Codex CLI，而不是陷入“没有图标无法配置”的死循环。
+        if (desired.Count == 0)
+        {
+            const string statusText = "MetrikLite：未找到 Codex CLI；右键设置路径";
+            desired.Add(("status", statusText,
+                _ => IconRenderer.ToIcon(IconRenderer.RenderStatus(
+                    "!", System.Windows.Media.Color.FromRgb(0xD1, 0x34, 0x38),
+                    _config.LightGlyphs, px))));
+        }
+
         var keep = new HashSet<string>();
         foreach (var (key, text, render) in desired)
         {
@@ -240,6 +252,14 @@ public sealed class TrayHost : IDisposable
         var checkUpdate = new WinForms.ToolStripMenuItem("检查更新") { Name = "check-update" };
         checkUpdate.Click += (_, _) => _ = CheckForUpdatesAsync(checkUpdate);
         menu.Items.Add(checkUpdate);
+
+        var codexPath = new WinForms.ToolStripMenuItem("设置 Codex CLI 路径")
+        {
+            Name = "codex-path",
+            ToolTipText = "选择独立安装的 codex.exe 或 codex.cmd；不要选择 WindowsApps 内置文件",
+        };
+        codexPath.Click += (_, _) => ChooseCodexBinary(codexPath);
+        menu.Items.Add(codexPath);
         menu.Items.Add(new WinForms.ToolStripSeparator());
 
         var lightItem = new WinForms.ToolStripMenuItem("浅色图标（深色任务栏）")
@@ -346,6 +366,38 @@ public sealed class TrayHost : IDisposable
             item.Text = "检查更新";
             item.Enabled = true;
         }
+    }
+
+    private void ChooseCodexBinary(WinForms.ToolStripMenuItem item)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择独立 Codex CLI",
+            Filter = "Codex CLI (codex.exe;codex.cmd;codex.bat)|codex.exe;codex.cmd;codex.bat|所有文件|*.*",
+            CheckFileExists = true,
+            Multiselect = false,
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (dialog.FileName.Contains(@"\WindowsApps\", StringComparison.OrdinalIgnoreCase))
+        {
+            WpfMessageBox.Show(
+                "Codex 桌面版 WindowsApps 内置 CLI 受系统权限保护，独立程序无法直接启动。\n\n请安装独立 Codex CLI，或选择 D 盘等可访问位置中的 codex.exe / codex.cmd。",
+                "无法使用该 Codex 路径",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        _config.CodexBinaryPath = dialog.FileName;
+        ConfigStore.Save(_config);
+        Log.Info($"configured Codex binary: {dialog.FileName}");
+        item.Text = "Codex CLI 路径已设置";
+        RefreshSafe();
     }
 
     private static void SetAutoStart(bool enable)

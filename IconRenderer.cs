@@ -34,15 +34,20 @@ public static class IconRenderer
     /// 避免小尺寸图标中符号挤压数字。
     /// </summary>
     public static RenderTargetBitmap RenderPercent(int percent, Color color, bool lightGlyphs, int px)
+        => RenderText(Math.Clamp(percent, 0, 100).ToString(CultureInfo.InvariantCulture), color, lightGlyphs, px);
+
+    /// <summary>渲染状态字符，用于 Codex 尚未配置时仍保留可操作的托盘菜单。</summary>
+    public static RenderTargetBitmap RenderStatus(string text, Color color, bool lightGlyphs, int px)
+        => RenderText(text, color, lightGlyphs, px);
+
+    private static RenderTargetBitmap RenderText(string text, Color color, bool lightGlyphs, int px)
     {
         px = Math.Clamp(px, 16, 64);
-        percent = Math.Clamp(percent, 0, 100);
         var bitmap = NewBitmap(px);
         var visual = new DrawingVisual();
 
         using (var context = visual.RenderOpen())
         {
-            var text = percent.ToString(CultureInfo.InvariantCulture);
             var room = Math.Max(1, px - 1.0);
             var em = px * 1.10;
             var glyphBounds = MeasureGlyphBounds(text, em);

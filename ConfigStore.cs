@@ -9,6 +9,9 @@ namespace MetrikLite;
 
 public sealed class TrayConfig
 {
+    /// <summary>用户手动选择的独立 Codex CLI 路径；留空表示自动查找。</summary>
+    public string? CodexBinaryPath { get; set; }
+
     /// <summary>刷新间隔，单位为秒；程序运行时最低按 10 秒执行。</summary>
     public int RefreshSeconds { get; set; } = 30;
 
