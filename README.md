@@ -45,7 +45,7 @@ dotnet publish MetrikLite.csproj -c Release -r win-x64 --self-contained true `
 
 本项目独立实现公开的 Codex app-server JSON-RPC 协议：启动 `codex app-server`，发送 `initialize`、`initialized` 和 `account/rateLimits/read`，解析窗口剩余比例与重置时间，再渲染托盘数字。
 
-项目设计受到 [Metrik](https://github.com/keros68/metrik) 的思路启发，如果需要更多功能，请看雨神得Metrik完整版。
+项目设计受到 [Metrik](https://github.com/keros68/metrik) 的思路启发，如果需要更多功能，请看雨神的Metrik完整版雨神主页：https://github.com/keros68。
 
 ## 代码地图
 
