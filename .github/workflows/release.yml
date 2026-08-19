@@ -1,6 +1,6 @@
 name: Release
 
-# 推送 v* 标签时构建便携版并自动发布 Release。
+# 推送 v* 标签时构建便携版、安装包并自动发布 Release。
 # （借鉴 Metrik 的发布方式：本地不装任何打包工具，全部在云端完成。）
 # 触发示例：git tag v1.0.0 && git push origin v1.0.0
 on:
@@ -25,17 +25,34 @@ jobs:
       - name: Publish self-contained exe
         run: dotnet publish MetrikLite.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
 
+      # GitHub Runner 不保证预装 Inno Setup，使用 winget 安装后构建安装向导。
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          winget install --id JRSoftware.InnoSetup --exact --silent --accept-source-agreements --accept-package-agreements
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe not found after installing Inno Setup." }
+          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path -Parent $iscc)
+
+      - name: Build installer
+        run: ISCC installer\MetrikLite.iss
+
       # 便携版：单文件 exe 直接打成 zip，免安装使用
       - name: Zip portable
         shell: pwsh
         run: Compress-Archive -Path publish\MetrikLite.exe -DestinationPath MetrikLite-portable-win-x64.zip
 
-      # Release：同时提供单文件 EXE 和便携版 ZIP，用户可直接下载。
+      # Release：同时提供安装包、单文件 EXE 和便携版 ZIP。
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           generate_release_notes: true
           files: |
+            installer/Output/MetrikLite-Setup.exe
             publish/MetrikLite.exe
             MetrikLite-portable-win-x64.zip
