@@ -1,0 +1,26 @@
+# 构建产物
+bin/
+obj/
+publish/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# 发布产物（本地单文件 exe / 安装包输出，正式产物走 GitHub Release）
+dist/
+installer/Output/
+
+# 冒烟测试输出
+smoke-out/
+smoke-out-dist/
+
+# 运行时本地文件（日志/配置在 %APPDATA%，正常不会出现在仓库目录）
+*.log
+config.json
+
+# 系统文件
+Thumbs.db
+.DS_Store

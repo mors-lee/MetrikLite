@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ==========================================================================
+  【模块】MetrikLite.csproj —— 项目与构建配置
+  ===========================================================================
+  【要点】
+    · net8.0-windows + UseWPF（渲染/面板）+ UseWindowsForms（NotifyIcon 托盘）。
+      同时启用两套 UI 框架是托盘程序常见做法：托盘控件只有 WinForms 有，
+      高质量文字/矢量渲染 WPF 更好。
+    · ApplicationHighDpiMode=PerMonitorV2：高 DPI 屏（如 4K/175%）图标清晰、
+      跨屏拖动尺寸正确。DPI 配置必须放这里而不是 manifest（WinForms 规范，
+      放 manifest 会触发 WFAC010 警告）。
+    · 零 NuGet 依赖：直连 codex app-server 只用 .NET 内置库
+      （System.Text.Json / Process / Channels 都在运行时内）。
+
+  【修改指南】
+    · 换 TargetFramework（如 net9.0-windows）→ 改 TargetFramework。
+    · 加 NuGet 包 → 新增 <ItemGroup> 放 PackageReference。
+    · 发布单文件 exe：dotnet publish -c Release -r win-x64 /p:PublishSingleFile=true
+      （完整发布命令见 README.md）
+  ========================================================================== -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MetrikLite</RootNamespace>
+    <AssemblyName>MetrikLite</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,46 @@
+name: Release
+
+# 推送 v* 标签时构建安装包并发布草稿 Release，由维护者确认后发布。
+# （借鉴 Metrik 的发布方式：本地不装任何打包工具，全部在云端完成。）
+# 触发示例：git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # 与本地发布命令保持一致：自包含 + 单文件 + 压缩。
+      # 目标机器无需安装 .NET 运行时，双击即用。
+      - name: Publish self-contained exe
+        run: dotnet publish MetrikLite.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
+
+      # windows-latest 预装 Inno Setup 6（ISCC 在 PATH 上），无需额外安装。
+      # 产物：installer\Output\MetrikLite-Setup.exe
+      - name: Build installer
+        run: ISCC installer\MetrikLite.iss
+
+      # 便携版：单文件 exe 直接打成 zip，免安装使用
+      - name: Zip portable
+        shell: pwsh
+        run: Compress-Archive -Path publish\MetrikLite.exe -DestinationPath MetrikLite-portable-win-x64.zip
+
+      # 草稿 Release：两个产物挂上，由维护者在 GitHub 页面确认后发布
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            installer/Output/MetrikLite-Setup.exe
+            MetrikLite-portable-win-x64.zip
