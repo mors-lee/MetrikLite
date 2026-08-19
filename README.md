@@ -1,6 +1,6 @@
 # Metrik Lite
 
-一个轻量的 Windows 托盘配额监视器。当前读取 **Codex** 的剩余额度，未来可以继续接入其他 AI coding 工具。
+一个轻量的 Windows 托盘配额监视器。当前读取 **Codex** 的剩余额度。
 
 - 定时启动 `codex app-server`，通过 stdio JSON-RPC 读取实时配额
 - 每个 Agent 显示一个清晰的数字托盘图标；详情面板显示百分比、进度条和重置时间
@@ -45,7 +45,7 @@ dotnet publish MetrikLite.csproj -c Release -r win-x64 --self-contained true `
 
 本项目独立实现公开的 Codex app-server JSON-RPC 协议：启动 `codex app-server`，发送 `initialize`、`initialized` 和 `account/rateLimits/read`，解析窗口剩余比例与重置时间，再渲染托盘数字。
 
-项目设计受到 [Metrik](https://github.com/keros68/metrik) 的思路启发，但不包含 Metrik 源代码，也不代表与 Keros68 共创或得到其官方背书。两者的代码、发布仓库和许可证相互独立。
+项目设计受到 [Metrik](https://github.com/keros68/metrik) 的思路启发，如果需要更多功能，请看雨神得Metrik完整版。
 
 ## 代码地图
 
