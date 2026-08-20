@@ -3,6 +3,8 @@
 // ============================================================================
 
 using System.Windows;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using WinForms = System.Windows.Forms;
@@ -28,9 +30,16 @@ public sealed class TrayHost : IDisposable
     private readonly Dictionary<string, TrayEntry> _entries = new();
     private readonly TrayConfig _config;
     private TrayState _state = new(Array.Empty<AgentQuota>(), DateTimeOffset.MinValue);
+    private HwndSource? _systemMessageWindow;
     private DetailsWindow? _details;
     private bool _refreshing;
     private bool _disposed;
+
+    private const int WmPowerBroadcast = 0x0218;
+    private const int PbtApmResumeAutomatic = 0x0012;
+    private const int PbtApmResumeSuspend = 0x0007;
+    private const int PbtApmResumeCritical = 0x0006;
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
 
     public TrayHost()
     {
@@ -44,6 +53,7 @@ public sealed class TrayHost : IDisposable
     public void Start()
     {
         Log.Info("tray host starting");
+        CreateSystemMessageWindow();
         RefreshSafe();
         _timer.Start();
     }
@@ -213,6 +223,80 @@ public sealed class TrayHost : IDisposable
             _entries.Remove(stale);
         }
     }
+
+    /// <summary>
+    /// Explorer 重启或电脑从睡眠恢复后，NotifyIcon 对象可能还在，但 Shell 中
+    /// 的图标已经丢失。通过 Visible=false/true 强制重新注册，不等待用户手动拖动。
+    /// </summary>
+    private void ReRegisterTrayIcons(string reason)
+    {
+        if (_entries.Count == 0)
+        {
+            RefreshSafe();
+            return;
+        }
+
+        Log.Info($"re-registering tray icons: {reason}");
+        foreach (var entry in _entries.Values)
+        {
+            try
+            {
+                entry.NotifyIcon.Visible = false;
+                entry.NotifyIcon.Visible = true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("failed to re-register tray icon", ex);
+            }
+        }
+
+        RefreshSafe();
+    }
+
+    private void CreateSystemMessageWindow()
+    {
+        try
+        {
+            var parameters = new HwndSourceParameters("MetrikLiteSystemMessages")
+            {
+                Width = 1,
+                Height = 1,
+                WindowStyle = unchecked((int)0x80000000), // WS_POPUP：不显示普通窗口边框
+                ExtendedWindowStyle = 0x00000080 | 0x08000000, // TOOLWINDOW + NOACTIVATE
+            };
+            _systemMessageWindow = new HwndSource(parameters);
+            _systemMessageWindow.AddHook(SystemMessageWindowProc);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("failed to create system message listener", ex);
+        }
+    }
+
+    private IntPtr SystemMessageWindowProc(
+        IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if ((uint)msg == TaskbarCreatedMessage)
+        {
+            Application.Current.Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => ReRegisterTrayIcons("Explorer/taskbar recreated")));
+        }
+        else if (msg == WmPowerBroadcast &&
+                 (wParam.ToInt32() == PbtApmResumeAutomatic ||
+                  wParam.ToInt32() == PbtApmResumeSuspend ||
+                  wParam.ToInt32() == PbtApmResumeCritical))
+        {
+            Application.Current.Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => ReRegisterTrayIcons("system resumed from sleep")));
+        }
+
+        return IntPtr.Zero;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint RegisterWindowMessage(string lpString);
 
     private static string BuildAgentTooltip(AgentQuota agent)
     {
@@ -447,6 +531,12 @@ public sealed class TrayHost : IDisposable
 
         _disposed = true;
         _timer.Stop();
+        if (_systemMessageWindow != null)
+        {
+            _systemMessageWindow.RemoveHook(SystemMessageWindowProc);
+            _systemMessageWindow.Dispose();
+            _systemMessageWindow = null;
+        }
         _details?.Close();
         foreach (var entry in _entries.Values)
         {

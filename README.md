@@ -16,6 +16,8 @@
 
 Codex 可执行文件按以下顺序查找：环境变量 `CODEX_BINARY`、托盘菜单中选择的独立 CLI 路径、官方 winget 包目录、`%APPDATA%\npm\codex.cmd`，以及 PATH 中的 `codex.exe`/`codex.cmd`。PATH 中属于 Trae Solo 的 `ai-agent` 启动器会自动跳过。Codex 桌面版 `WindowsApps` 内置 CLI 受系统权限保护，不能由独立程序直接启动，请选择可访问的独立 Codex CLI。
 
+程序会在 Windows 资源管理器重启、任务栏重建以及电脑从睡眠恢复时自动重新注册托盘图标并刷新配额。托盘图标是否显示在“隐藏图标”区域由 Windows 任务栏设置决定，应用不能强制修改这个系统位置。
+
 ## 构建与运行
 
 ```powershell
