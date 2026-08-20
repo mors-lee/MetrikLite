@@ -1,22 +1,5 @@
 // ============================================================================
-// 【模块】DetailsWindow.xaml.cs —— 详情面板逻辑（左键托盘图标弹出的悬浮卡）
-// ============================================================================
-// 【职责】
-//   1. Update(TrayState)：接收一次刷新数据，重建面板内容。
-//      由 TrayHost.Refresh() 在面板打开时调用；也在 ShowDetails() 里首显前调用。
-//   2. BuildAgentRow()：为单个 Agent 生成一行 UI（名称 + 百分比 + 进度条 + 元信息）。
-//   3. 定位与自动关闭：贴着任务栏右下角弹出；失去焦点或按 Esc 即关。
-//
-// 【依赖】Models（AgentQuota/QuotaSnapshot/TrayState）。
-//
-// 【修改指南】
-//   · 想改行的字号/间距/颜色 → BuildAgentRow()（进度条宽度基准 300 是
-//     面板内可用宽度，改面板宽度时同步改它）。
-//   · 低电量红色阈值（≤20%）→ BuildAgentRow() 的 displayColor 判断，
-//     与 TrayHost.PercentColor() 保持一致。
-//   · 想显示“已用百分比”而非“剩余”→ BuildAgentRow() 里把
-//     RemainingPercent 换成 100 - RemainingPercent。
-//   · 元信息行内容（重置时间/更新于/来源）→ BuildSubLine()。
+// DetailsWindow.xaml.cs —— 托盘上方的轻量配额面板
 // ============================================================================
 
 using System.Windows;
@@ -24,183 +7,304 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using WinForms = System.Windows.Forms;
-using KeyEventArgs = System.Windows.Input.KeyEventArgs;
-using Color = System.Windows.Media.Color;
 using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
+using FontFamily = System.Windows.Media.FontFamily;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using Point = System.Windows.Point;
 
 namespace MetrikLite;
 
 public partial class DetailsWindow : Window
 {
+    public event EventHandler? RefreshRequested;
+
     public DetailsWindow()
     {
         InitializeComponent();
+        // 首次 Show 时先隐藏，定位完成后再显示，避免窗口在屏幕中央闪一下。
+        Opacity = 0;
     }
 
-    /// <summary>
-    /// 把面板定位到任务栏托盘附近（鼠标所在屏幕的右下角、避开屏幕边缘）。
-    /// 前提：内容已布局完成（UpdateLayout 之后高度才是真实值）。
-    /// </summary>
+    /// <summary>把面板贴到鼠标所在屏幕的任务栏上方右侧，并正确处理 DPI 缩放。</summary>
     public void PositionNearCursor()
     {
         var cursor = WinForms.Cursor.Position;
-        // 用鼠标所在显示器的工作区（避开任务栏本身）
         var work = WinForms.Screen.FromPoint(cursor).WorkingArea;
-        Left = Math.Min(cursor.X - Width - 16, work.Right - Width - 8);
-        Top = work.Bottom - Height - 16;
-        if (Top < work.Top) // 极端小屏兜底
-        {
-            Top = work.Top;
-        }
+        var source = PresentationSource.FromVisual(this);
+        var fromDevice = source?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = fromDevice.Transform(new Point(work.Left, work.Top));
+        var bottomRight = fromDevice.Transform(new Point(work.Right, work.Bottom));
+
+        var width = ActualWidth > 0 ? ActualWidth : Width;
+        var height = ActualHeight > 0 ? ActualHeight : Height;
+        Left = Math.Max(topLeft.X + 10, bottomRight.X - width - 12);
+        Top = Math.Max(topLeft.Y + 10, bottomRight.Y - height - 12);
     }
 
-    /// <summary>
-    /// 用新状态重建面板。每次全量 Clear + 重建（Agent 数量少，无需增量优化）。
-    /// </summary>
+    /// <summary>用新状态重建面板。配额数量很少，全量重建更简单可靠。</summary>
     public void Update(TrayState state)
     {
-        RefreshedText.Text = $"更新于 {state.ReadAt:HH:mm:ss} · 直连 Codex app-server 实时读取";
+        RefreshedText.Text = state.ReadAt == DateTimeOffset.MinValue
+            ? "等待首次读取…"
+            : $"刚刚更新 · {state.ReadAt:HH:mm:ss}";
+        RefreshButton.IsEnabled = true;
+        LiveDot.Fill = new SolidColorBrush(state.Agents.Count > 0
+            ? Color.FromRgb(0x45, 0xB9, 0x7C)
+            : Color.FromRgb(0xE7, 0xA5, 0x3B));
 
         AgentsPanel.Children.Clear();
         if (state.Agents.Count == 0)
         {
-            // 读不到数据时给出可操作的提示，而不是一片空白
-            AgentsPanel.Children.Add(new TextBlock
-            {
-                Text = "暂无配额数据。请确认：① 已安装 Codex CLI 并完成登录；② 详见日志 %APPDATA%\\MetrikLite\\metriklite.log",
-                Foreground = new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x8A)),
-                FontSize = 11.5,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 4, 0, 0),
-            });
-            return;
+            AgentsPanel.Children.Add(BuildEmptyState());
         }
-
-        foreach (var agent in state.Agents)
+        else
         {
-            AgentsPanel.Children.Add(BuildAgentRow(agent));
+            foreach (var agent in state.Agents)
+            {
+                AgentsPanel.Children.Add(BuildAgentCard(agent));
+            }
         }
 
-        // 先按内容定高 → 再布局 → 再定位（顺序不能反，否则高度不准）
-        SizeToContent = SizeToContent.Height;
-        UpdateLayout();
-        PositionNearCursor();
         if (!IsVisible)
         {
             Show();
         }
+
+        SizeToContent = SizeToContent.Height;
+        UpdateLayout();
+        PositionNearCursor();
+        Opacity = 1;
     }
 
-    /// <summary>
-    /// 构造一个 Agent 的完整行：
-    ///   [名称 ................. 12%]
-    ///   [■■■□□□□□□□□□ 进度条]
-    ///   重置于 08-20 15:05 · 更新于 刚刚 · Codex app-server
-    /// </summary>
-    private UIElement BuildAgentRow(AgentQuota agent)
+    private static UIElement BuildEmptyState()
     {
-        var p = agent.Primary;
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = "暂时没有读取到配额",
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = BrushOf(0x2B, 0x36, 0x48),
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = "请确认 Codex CLI 已登录；也可以右键托盘图标手动选择 CLI 路径。",
+            FontSize = 11.5,
+            LineHeight = 18,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = BrushOf(0x7A, 0x87, 0x98),
+            Margin = new Thickness(0, 6, 0, 0),
+        });
 
-        // 品牌色画笔；HEX 非法时退化为中性灰（不抛异常）
-        var color = new BrushConverter().ConvertFromString(agent.BrandHex) as Brush
-                    ?? new SolidColorBrush(Color.FromRgb(0x5A, 0x5A, 0x5A));
-        // 与托盘图标一致的告警规则：剩余 ≤20% 变红
-        var displayColor = p.RemainingPercent <= 20
-            ? new SolidColorBrush(Color.FromRgb(0xD1, 0x34, 0x38))
-            : color;
+        return new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = BrushOf(0xE4, 0xE9, 0xF1),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(16),
+            Padding = new Thickness(16),
+            Child = panel,
+        };
+    }
 
-        // —— 行头：左名称、右百分比 ——
+    private static UIElement BuildAgentCard(AgentQuota agent)
+    {
+        var accent = ParseBrush(agent.BrandHex, Color.FromRgb(0x4E, 0x82, 0xE8));
+        var body = new StackPanel();
+
+        var header = new Grid { Margin = new Thickness(1, 0, 1, 11) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.Children.Add(new Border
+        {
+            Width = 9,
+            Height = 9,
+            CornerRadius = new CornerRadius(5),
+            Background = accent,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+        });
         var name = new TextBlock
         {
             Text = agent.DisplayName,
-            FontSize = 12.5,
+            FontSize = 13,
             FontWeight = FontWeights.SemiBold,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A)),
+            Foreground = BrushOf(0x21, 0x2B, 0x3C),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        var percent = new TextBlock
-        {
-            Text = $"{p.RemainingPercent:0.#}%",
-            FontSize = 14,
-            FontWeight = FontWeights.Bold,
-            Foreground = displayColor,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        var header = new DockPanel { Margin = new Thickness(0, 8, 0, 0) };
-        DockPanel.SetDock(percent, Dock.Right); // Dock 右侧需先加右子项再加填充项
-        header.Children.Add(percent);
+        Grid.SetColumn(name, 1);
         header.Children.Add(name);
-
-        // —— 进度条：灰底 + 品牌色填充（宽度基准 300 ≈ 面板可用宽）——
-        var track = new Border
+        var status = new Border
         {
-            Height = 5,
-            CornerRadius = new CornerRadius(2.5),
-            Background = new SolidColorBrush(Color.FromRgb(0xEC, 0xEC, 0xEC)),
-            Margin = new Thickness(0, 6, 0, 0),
+            CornerRadius = new CornerRadius(9),
+            Background = BrushOf(0xF0, 0xF4, 0xF8),
+            Padding = new Thickness(7, 3, 7, 3),
+            Child = new TextBlock
+            {
+                Text = "实时",
+                FontSize = 10,
+                Foreground = BrushOf(0x70, 0x7E, 0x91),
+            },
         };
-        var fill = new Border
-        {
-            CornerRadius = new CornerRadius(2.5),
-            Background = displayColor,
-            Width = Math.Max(2, 300 * Math.Clamp(p.RemainingPercent / 100.0, 0, 1)),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-        };
-        track.Child = fill;
+        Grid.SetColumn(status, 2);
+        header.Children.Add(status);
+        body.Children.Add(header);
 
-        // —— 元信息行 ——
-        var sub = BuildSubLine(p);
-        sub.Margin = new Thickness(0, 4, 0, 0);
+        var windows = agent.AllWindows
+            .OrderBy(w => w.WindowKey.Equals("primary", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ToList();
+        for (var i = 0; i < windows.Count; i++)
+        {
+            if (i > 0)
+            {
+                body.Children.Add(new Border
+                {
+                    Height = 1,
+                    Background = BrushOf(0xED, 0xF0, 0xF5),
+                    Margin = new Thickness(0, 12, 0, 12),
+                });
+            }
+            body.Children.Add(BuildWindowBlock(windows[i], accent));
+        }
+
+        return new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = BrushOf(0xE3, 0xE8, 0xF0),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(17),
+            Padding = new Thickness(15, 13, 15, 14),
+            Margin = new Thickness(0, 0, 0, 10),
+            Child = body,
+        };
+    }
+
+    private static UIElement BuildWindowBlock(QuotaSnapshot snapshot, Brush accent)
+    {
+        var remaining = Math.Clamp(snapshot.RemainingPercent, 0, 100);
+        var display = remaining <= 20 ? BrushOf(0xE4, 0x54, 0x5C) : accent;
 
         var panel = new StackPanel();
-        panel.Children.Add(header);
-        panel.Children.Add(track);
-        panel.Children.Add(sub);
+        var line = new Grid();
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        line.Children.Add(new TextBlock
+        {
+            Text = WindowTitle(snapshot.WindowKey),
+            FontSize = 11.5,
+            Foreground = BrushOf(0x66, 0x74, 0x87),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 0, 3),
+        });
+        var percent = new TextBlock
+        {
+            Text = $"{remaining:0.#}%",
+            FontFamily = new FontFamily("Segoe UI Variable Display, Segoe UI"),
+            FontSize = 25,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = display,
+            VerticalAlignment = VerticalAlignment.Bottom,
+        };
+        Grid.SetColumn(percent, 1);
+        line.Children.Add(percent);
+        panel.Children.Add(line);
+
+        var progress = new Grid { Height = 7, Margin = new Thickness(0, 8, 0, 0) };
+        progress.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width = new GridLength(Math.Max(0.001, remaining), GridUnitType.Star),
+        });
+        progress.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width = new GridLength(Math.Max(0.001, 100 - remaining), GridUnitType.Star),
+        });
+        var track = new Border
+        {
+            Background = BrushOf(0xEC, 0xF0, 0xF5),
+            CornerRadius = new CornerRadius(4),
+        };
+        Grid.SetColumnSpan(track, 2);
+        progress.Children.Add(track);
+        progress.Children.Add(new Border
+        {
+            Background = display,
+            CornerRadius = new CornerRadius(4),
+            MinWidth = remaining > 0 ? 3 : 0,
+        });
+        panel.Children.Add(progress);
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = ResetText(snapshot),
+            FontSize = 10.5,
+            Foreground = BrushOf(0x82, 0x8E, 0x9E),
+            Margin = new Thickness(0, 7, 0, 0),
+        });
         return panel;
     }
 
-    /// <summary>拼一行元信息：重置时间（过期则标注）· 采集时间 · 数据来源 · 非实时质量标注。</summary>
-    private static TextBlock BuildSubLine(QuotaSnapshot p)
+    private static string WindowTitle(string key) => key.ToLowerInvariant() switch
     {
-        var bits = new List<string>();
-        if (p.ResetsAtMs is long resetMs)
+        "primary" => "短时窗口剩余",
+        "secondary" => "每周窗口剩余",
+        _ => $"{key} 窗口剩余",
+    };
+
+    private static string ResetText(QuotaSnapshot snapshot)
+    {
+        if (snapshot.ResetsAtMs is not long resetMs)
         {
-            var reset = DateTimeOffset.FromUnixTimeMilliseconds(resetMs).ToLocalTime();
-            bits.Add(reset > DateTimeOffset.Now
-                ? $"重置于 {reset:MM-dd HH:mm}"
-                : $"窗口 {reset:MM-dd HH:mm} 已结束"); // 过期窗口如实标注，不冒充有效
-        }
-        bits.Add($"更新于 {RelativeTime(p.CollectedAtMs)}");
-        bits.Add(p.SourceLabel);
-        if (p.Quality != "official_live")
-        {
-            bits.Add($"质量: {p.Quality}"); // 非“官方实时”的数据让用户知情
+            return $"重置时间  暂未提供  ·  更新于 {RelativeTime(snapshot.CollectedAtMs)}";
         }
 
-        return new TextBlock
-        {
-            Text = string.Join(" · ", bits),
-            FontSize = 10.5,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x8A)),
-            TextWrapping = TextWrapping.Wrap,
-        };
+        var reset = DateTimeOffset.FromUnixTimeMilliseconds(resetMs).ToLocalTime();
+        var when = reset.Date == DateTimeOffset.Now.Date
+            ? $"今天 {reset:HH:mm}"
+            : reset.Date == DateTimeOffset.Now.Date.AddDays(1)
+                ? $"明天 {reset:HH:mm}"
+                : $"{reset:MM月dd日 HH:mm}";
+        return $"重置时间  {when}  ·  更新于 {RelativeTime(snapshot.CollectedAtMs)}";
     }
 
-    /// <summary>Unix 毫秒 → 人性化相对时间（“刚刚 / 5 分钟前 / 3 小时前 / 2 天前”）。</summary>
     private static string RelativeTime(long unixMs)
     {
-        var t = DateTimeOffset.FromUnixTimeMilliseconds(unixMs).ToLocalTime();
-        var delta = DateTimeOffset.Now - t;
+        var time = DateTimeOffset.FromUnixTimeMilliseconds(unixMs).ToLocalTime();
+        var delta = DateTimeOffset.Now - time;
         return delta.TotalMinutes < 2 ? "刚刚"
-            : delta.TotalHours < 1 ? $"{(int)delta.TotalMinutes} 分钟前"
+            : delta.TotalHours < 1 ? $"{Math.Max(1, (int)delta.TotalMinutes)} 分钟前"
             : delta.TotalDays < 1 ? $"{(int)delta.TotalHours} 小时前"
             : $"{(int)delta.TotalDays} 天前";
     }
 
-    // 点到面板外任意处 → 自动关闭（悬浮卡的标准行为）
+    private static Brush ParseBrush(string hex, Color fallback)
+    {
+        try
+        {
+            return new BrushConverter().ConvertFromString(hex) as Brush ?? new SolidColorBrush(fallback);
+        }
+        catch
+        {
+            return new SolidColorBrush(fallback);
+        }
+    }
+
+    private static SolidColorBrush BrushOf(byte r, byte g, byte b)
+        => new(Color.FromRgb(r, g, b));
+
+    private void OnRefreshClick(object sender, RoutedEventArgs e)
+    {
+        RefreshButton.IsEnabled = false;
+        RefreshedText.Text = "正在刷新…";
+        RefreshRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
     private void OnDeactivated(object sender, EventArgs e) => Close();
 
-    // Esc 关闭（无标题栏窗口给键盘留的出口）
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)

@@ -65,6 +65,17 @@ public static class SmokeTest
                 report.AppendLine($"  agent-{agent.AdapterId}-24/32.png ({percent}%)");
             }
 
+            // 固定覆盖容易暴露基线、裁切与缩放问题的数字，避免只测试当前配额值。
+            foreach (var sample in new[] { 8, 10, 100 })
+            {
+                foreach (var size in new[] { 16, 24, 32 })
+                {
+                    SavePng(outDir, $"type-{sample}-{size}.png",
+                        IconRenderer.RenderPercent(sample, Color.FromRgb(0xE4, 0x54, 0x5C), false, size));
+                }
+            }
+            report.AppendLine("  typography samples: 8 / 10 / 100 at 16 / 24 / 32px");
+
             var reportPath = Path.Combine(outDir, "report.txt");
             File.WriteAllText(reportPath, report.ToString(), new UTF8Encoding(true));
             Console.WriteLine(report.ToString());

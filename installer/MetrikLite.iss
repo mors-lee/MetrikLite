@@ -25,7 +25,7 @@
 
 ; 版本号唯一入口（发布时与 git tag 保持一致，如 v1.0.0 → "1.0.0"）
 #define MyAppName "MetrikLite"
-#define MyAppVersion "1.0.10"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Mors"
 #define MyAppExeName "MetrikLite.exe"
 #define MyAppId "{{9F6B2C41-8D3E-4A57-B1C0-2E8D5A9F7B43}"
@@ -36,7 +36,7 @@ AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-SetupIconFile=..\MetrikLite.ico
+SetupIconFile=..\MetrikLite-v2.ico
 ; 每用户安装：{autopf} 在 lowest 权限下解析为 %LocalAppData%\Programs
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
@@ -55,12 +55,12 @@ Name: "autostart"; Description: "开机自动启动 {#MyAppName}"; GroupDescript
 
 [Files]
 Source: "..\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\MetrikLite.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\MetrikLite-v2.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MetrikLite.ico"; IconIndex: 0
-; 桌面快捷方式固定创建并在升级时重写，确保使用新版 ML 图标而不是旧缓存路径
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\MetrikLite.ico"; IconIndex: 0
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MetrikLite-v2.ico"; IconIndex: 0
+; 使用版本化图标文件路径并在升级时重写快捷方式，绕过 Windows 旧图标缓存。
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\MetrikLite-v2.ico"; IconIndex: 0
 Name: "{group}\卸载 {#MyAppName}"; Filename: "{uninstallexe}"
 
 [Registry]

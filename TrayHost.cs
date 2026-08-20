@@ -117,7 +117,7 @@ public sealed class TrayHost : IDisposable
     /// <summary>Agent 标识 → 展示名和品牌色，为后续适配其他 Agent 预留。</summary>
     private static (string Name, string Hex) AgentIdentity(string adapterId) => adapterId.ToLowerInvariant() switch
     {
-        "codex" => ("Codex", "#6B7C32"),
+        "codex" => ("Codex", "#4E82E8"),
         "claude" => ("Claude", "#D97757"),
         "zcode" => ("ZCode / GLM", "#1E6FFF"),
         "opencode" => ("OpenCode", "#8B5CF6"),
@@ -517,6 +517,7 @@ public sealed class TrayHost : IDisposable
         if (_details == null || !_details.IsLoaded)
         {
             _details = new DetailsWindow();
+            _details.RefreshRequested += (_, _) => RefreshSafe();
         }
         _details.Update(_state);
         _details.Activate();
