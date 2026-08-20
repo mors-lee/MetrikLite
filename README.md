@@ -237,7 +237,7 @@ installer/                中英双语 Inno Setup 安装脚本
 
 ## 致谢
 
-- 配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发，如果在用多个AI coding工具，请移步雨神的这个项目。
+- 配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发，如果在用多个AI coding工具，以及多个功能请移步[雨神](https://github.com/keros68) 的这个项目。
 
 ## License
 
