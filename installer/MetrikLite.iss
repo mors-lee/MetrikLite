@@ -25,7 +25,7 @@
 
 ; 版本号唯一入口（发布时与 git tag 保持一致，如 v1.0.0 → "1.0.0"）
 #define MyAppName "MetrikLite"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.1.1"
 #define MyAppPublisher "Mors"
 #define MyAppExeName "MetrikLite.exe"
 #define MyAppId "{{9F6B2C41-8D3E-4A57-B1C0-2E8D5A9F7B43}"
@@ -35,23 +35,54 @@
 AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppPublisherURL=https://github.com/mors-lee/MetrikLite
+AppSupportURL=https://github.com/mors-lee/MetrikLite/issues
+AppUpdatesURL=https://github.com/mors-lee/MetrikLite/releases/latest
 SetupIconFile=..\MetrikLite-v2.ico
 ; 每用户安装：{autopf} 在 lowest 权限下解析为 %LocalAppData%\Programs
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
 OutputDir=Output
 OutputBaseFilename=MetrikLite-Setup
 Compression=lzma2/max
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
+DisableWelcomePage=no
+DisableProgramGroupPage=yes
+LicenseFile=..\LICENSE
+CloseApplications=yes
+RestartApplications=no
+SetupLogging=yes
+VersionInfoVersion={#MyAppVersion}.0
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription=MetrikLite Windows 安装程序
+VersionInfoProductName={#MyAppName}
+VersionInfoProductVersion={#MyAppVersion}
+
+[Languages]
+; 简体中文翻译固定来自 Inno Setup 官方源码，并随仓库一起发布，保证本地与 CI 一致。
+Name: "chinesesimplified"; MessagesFile: "Languages\ChineseSimplified.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[CustomMessages]
+chinesesimplified.AdditionalOptions=附加选项:
+english.AdditionalOptions=Additional options:
+chinesesimplified.AutoStart=登录 Windows 后自动启动 MetrikLite
+english.AutoStart=Start MetrikLite automatically after signing in to Windows
+chinesesimplified.UninstallName=卸载 MetrikLite
+english.UninstallName=Uninstall MetrikLite
+chinesesimplified.FinishedHint=MetrikLite 已安装完成。启动后它会常驻任务栏通知区域；左键查看配额，右键打开设置菜单。
+english.FinishedHint=MetrikLite is installed. It runs in the notification area; left-click for quota details and right-click for settings.
 
 [Tasks]
 ; 默认勾选开机自启（托盘常驻工具的常见预期）；不想默认勾就把 \checked 去掉
-Name: "autostart"; Description: "开机自动启动 {#MyAppName}"; GroupDescription: "附加任务:"; Flags: checkedonce
+Name: "autostart"; Description: "{cm:AutoStart}"; GroupDescription: "{cm:AdditionalOptions}"; Flags: checkedonce
 
 [Files]
 Source: "..\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
@@ -61,11 +92,18 @@ Source: "..\MetrikLite-v2.ico"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\MetrikLite-v2.ico"; IconIndex: 0
 ; 使用版本化图标文件路径并在升级时重写快捷方式，绕过 Windows 旧图标缓存。
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\MetrikLite-v2.ico"; IconIndex: 0
-Name: "{group}\卸载 {#MyAppName}"; Filename: "{uninstallexe}"
+Name: "{group}\{cm:UninstallName}"; Filename: "{uninstallexe}"
 
 [Registry]
 ; 与程序内置 SetAutoStart() 同键同名；卸载时一并清理（uninsdeletevalue）
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#MyAppName}"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: autostart
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = wpFinished then
+    WizardForm.FinishedLabel.Caption := ExpandConstant('{cm:FinishedHint}');
+end;
