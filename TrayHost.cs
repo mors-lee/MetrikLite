@@ -71,8 +71,10 @@ public sealed class TrayHost : IDisposable
         _refreshing = true;
         try
         {
-            var snapshots = await CodexAppServer.ReadAsync(
-                TimeSpan.FromSeconds(25), _config.CodexBinaryPath);
+            // app-server 会话完全在线程池中运行，避免应用退出时 UI Dispatcher
+            // 与会话锁互相等待；结果回来后再由当前 Dispatcher 更新托盘。
+            var snapshots = await Task.Run(() => CodexAppServer.ReadAsync(
+                TimeSpan.FromSeconds(25), _config.CodexBinaryPath));
             var agents = GroupAgents(snapshots);
             _state = new TrayState(agents, DateTimeOffset.Now);
             Log.Info($"refreshed: agents={agents.Count}");
@@ -532,6 +534,14 @@ public sealed class TrayHost : IDisposable
 
         _disposed = true;
         _timer.Stop();
+        try
+        {
+            Task.Run(CodexAppServer.ShutdownAsync).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("failed to shut down Codex app-server", ex);
+        }
         if (_systemMessageWindow != null)
         {
             _systemMessageWindow.RemoveHook(SystemMessageWindowProc);

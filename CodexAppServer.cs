@@ -3,8 +3,9 @@
 // ============================================================================
 // 【职责】
 //   启动本机 `codex app-server` 子进程，通过其 stdio 上的 JSON-RPC 协议
-//   一次性询问账号配额（account/rateLimits/read），解析出 primary/secondary
-//   两个窗口的剩余百分比，然后清理进程。方法完整复刻 Metrik 的
+//   询问账号配额（account/rateLimits/read），解析出 primary/secondary
+//   两个窗口的剩余百分比。进程作为长连接复用，避免频繁启动/强杀 Codex
+//   及其 Git 子进程。协议解析参考 Metrik 的
 //   src-tauri/src/adapters/app_server.rs（该实现已在本机验证可用），
 //   因此 MetrikLite 不再需要 Metrik 应用或其数据库——只要装了 Codex。
 //
@@ -14,7 +15,7 @@
 //   ③ 我方 → {"method":"initialized"}                （通知，无 id）
 //   ④ 我方 → {"id":3,"method":"account/rateLimits/read"}
 //   ⑤ 对方 → {"id":3,"result":{ rateLimits:{ primary:{...}, secondary:{...} } }}
-//   拿到 ⑤ 即断开杀进程。期间对方可能推送若干无 id 的通知，跳过即可。
+//   后续刷新只重复 ④⑤。期间对方可能推送若干无 id 的通知，跳过即可。
 //
 // 【响应解析】（与 Metrik parse_rate_limits 一致）
 //   · 优先 result.rateLimits（账号当前生效窗口的权威数据）；
@@ -41,7 +42,8 @@
 //   · stderr 必须持续排水：子进程警告写满 4KB 管道缓冲后会整体卡死
 //     （本机实测：arg0 清理警告即走 stderr）。
 //   · stdout 用专职线程逐行读（ReadLineAsync 不能并发重入）。
-//   · 结束时 taskkill /PID x /T /F 杀整棵进程树（app-server 可能有孙进程）。
+//   · app-server 在刷新之间保持运行；退出时先关闭 stdin 等待正常结束，
+//     仅在超时后使用 Process.Kill(entireProcessTree: true) 兜底。
 //   · CreateNoWindow：绝不弹出控制台窗口。
 //
 // 【修改指南】
@@ -62,6 +64,15 @@ namespace MetrikLite;
 
 public static class CodexAppServer
 {
+    private static readonly SemaphoreSlim SessionGate = new(1, 1);
+    private static Process? _sessionProcess;
+    private static Channel<string>? _sessionLines;
+    private static CancellationTokenSource? _sessionLifetime;
+    private static Task? _stdoutPump;
+    private static Task? _stderrPump;
+    private static string? _sessionCommandKey;
+    private static long _nextRequestId = 1;
+
     private static readonly string[] KnownUnrelatedPathMarkers =
     {
         @"\trae solo\",
@@ -211,93 +222,172 @@ public static class CodexAppServer
     // ---------------------------------------------------------------
 
     /// <summary>
-    /// 启动 codex app-server → 走一遍 JSON-RPC → 解析配额 → 杀进程。
-    /// 失败返回空列表（错误已记日志），绝不抛出。
+    /// 复用 codex app-server 长连接读取配额。进程不存在、已退出或 CLI 路径变化时
+    /// 才重新启动；失败返回空列表（错误已记日志），绝不向 UI 抛出。
     /// </summary>
     /// <param name="timeout">整个会话的硬超时（含进程冷启动）。</param>
     public static async Task<IReadOnlyList<QuotaSnapshot>> ReadAsync(
         TimeSpan timeout, string? configuredPath = null)
     {
-        var resolved = ResolveCodexCommand(configuredPath);
-        if (resolved == null)
-        {
-            return Array.Empty<QuotaSnapshot>();
-        }
-        var (fileName, argsPrefix) = resolved.Value;
-        Log.Info($"codex app-server: {fileName} {argsPrefix} app-server");
-
-        Process? proc = null;
+        await SessionGate.WaitAsync();
         try
         {
-            var psi = new ProcessStartInfo
+            var resolved = ResolveCodexCommand(configuredPath);
+            if (resolved == null)
             {
-                FileName = fileName,
-                Arguments = $"{argsPrefix} app-server".Trim(),
-                UseShellExecute = false,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,   // 必须重定向并持续排水，否则子进程会卡死
-                CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8,
-            };
-            proc = Process.Start(psi)
-                ?? throw new InvalidOperationException("Process.Start returned null");
-            Log.Info($"codex app-server started, pid={proc.Id}");
+                await StopSessionAsync();
+                return Array.Empty<QuotaSnapshot>();
+            }
+
             using var cts = new CancellationTokenSource(timeout);
-
-            // stderr 排水：丢弃内容，只保证管道不堵塞
-            _ = proc.StandardError.ReadToEndAsync(cts.Token).ContinueWith(_ => { });
-
-            // stdout 专职读线程：逐行塞进 channel（ReadLineAsync 不可重入，
-            // 必须由单一消费者顺序读——专职线程是最简单的正确写法）
-            var lines = Channel.CreateUnbounded<string>();
-            var pump = Task.Run(async () =>
+            try
             {
-                try
-                {
-                    while (!cts.Token.IsCancellationRequested)
-                    {
-                        var line = await proc.StandardOutput.ReadLineAsync(cts.Token);
-                        if (line == null)
-                        {
-                            break; // EOF：进程退出
-                        }
-                        await lines.Writer.WriteAsync(line, cts.Token);
-                    }
-                }
-                catch
-                {
-                    // 超时/取消：读循环自然结束
-                }
-                finally
-                {
-                    lines.Writer.TryComplete();
-                }
-            }, cts.Token);
-
-            var result = await ExchangeAsync(proc, lines.Reader, cts.Token);
-            return ParseRateLimits(result);
-        }
-        catch (Exception ex)
-        {
-            Log.Error("codex app-server session failed", ex);
-            return Array.Empty<QuotaSnapshot>();
+                await EnsureSessionAsync(resolved.Value, cts.Token);
+                var proc = _sessionProcess
+                    ?? throw new InvalidOperationException("Codex app-server session is unavailable");
+                var requestId = Interlocked.Increment(ref _nextRequestId);
+                await WriteLineAsync(proc,
+                    $"{{\"id\":{requestId},\"method\":\"account/rateLimits/read\"}}",
+                    cts.Token);
+                Log.Info($"codex app-server: rateLimits request sent, id={requestId}");
+                var result = await WaitForResultAsync(requestId, cts.Token);
+                Log.Info($"codex app-server: rateLimits result received, id={requestId}");
+                return ParseRateLimits(result);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("codex app-server session failed", ex);
+                await StopSessionAsync();
+                return Array.Empty<QuotaSnapshot>();
+            }
         }
         finally
         {
-            KillTree(proc);
+            SessionGate.Release();
         }
     }
 
-    /// <summary>执行“初始化 → rateLimits 问答”的协议状态机，返回 id=3 的 result 节点。</summary>
-    private static async Task<JsonElement> ExchangeAsync(
-        Process proc, ChannelReader<string> reader, CancellationToken ct)
+    /// <summary>应用退出时正常关闭长连接，避免 taskkill 打断正在初始化的 Git 子进程。</summary>
+    public static async Task ShutdownAsync()
     {
-        await WriteLineAsync(proc,
-            """{"id":1,"method":"initialize","params":{"clientInfo":{"name":"metriklite","title":"MetrikLite","version":"1.0.0"},"capabilities":{"experimentalApi":true,"optOutNotificationMethods":[]}}}""");
+        await SessionGate.WaitAsync();
+        try
+        {
+            await StopSessionAsync();
+        }
+        finally
+        {
+            SessionGate.Release();
+        }
+    }
 
-        var asked = false;
+    private static async Task EnsureSessionAsync(
+        (string FileName, string Args) resolved,
+        CancellationToken ct)
+    {
+        var commandKey = $"{resolved.FileName}\n{resolved.Args}";
+        if (_sessionProcess is { HasExited: false } &&
+            string.Equals(_sessionCommandKey, commandKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await StopSessionAsync();
+
+        var workingDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MetrikLite", "Runtime");
+        Directory.CreateDirectory(workingDirectory);
+        var psi = new ProcessStartInfo
+        {
+            FileName = resolved.FileName,
+            Arguments = $"{resolved.Args} app-server".Trim(),
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
+        };
+        var proc = Process.Start(psi)
+            ?? throw new InvalidOperationException("Process.Start returned null");
+        var lifetime = new CancellationTokenSource();
+        var lines = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = true,
+        });
+
+        _sessionProcess = proc;
+        _sessionLines = lines;
+        _sessionLifetime = lifetime;
+        _sessionCommandKey = commandKey;
+        _nextRequestId = 1;
+        _stdoutPump = PumpStdoutAsync(proc, lines.Writer, lifetime.Token);
+        _stderrPump = DrainStderrAsync(proc, lifetime.Token);
+        Log.Info($"codex app-server started for reusable session, pid={proc.Id}");
+
+        await WriteLineAsync(proc,
+            """{"id":1,"method":"initialize","params":{"clientInfo":{"name":"metriklite","title":"MetrikLite","version":"1.1.2"},"capabilities":{"experimentalApi":true,"optOutNotificationMethods":[]}}}""",
+            ct);
+        _ = await WaitForResultAsync(1, ct);
+        await WriteLineAsync(proc, """{"method":"initialized"}""", ct);
+        Log.Info("codex app-server reusable session initialized");
+    }
+
+    private static async Task PumpStdoutAsync(
+        Process proc,
+        ChannelWriter<string> writer,
+        CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var line = await proc.StandardOutput.ReadLineAsync(ct);
+                if (line == null)
+                {
+                    break;
+                }
+                await writer.WriteAsync(line, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常关闭。
+        }
+        catch (Exception ex)
+        {
+            Log.Error("codex app-server stdout pump failed", ex);
+        }
+        finally
+        {
+            writer.TryComplete();
+        }
+    }
+
+    private static async Task DrainStderrAsync(Process proc, CancellationToken ct)
+    {
+        try
+        {
+            _ = await proc.StandardError.ReadToEndAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // 正常关闭。
+        }
+        catch (Exception ex)
+        {
+            Log.Error("codex app-server stderr pump failed", ex);
+        }
+    }
+
+    private static async Task<JsonElement> WaitForResultAsync(long expectedId, CancellationToken ct)
+    {
+        var reader = _sessionLines?.Reader
+            ?? throw new InvalidOperationException("Codex app-server output channel is unavailable");
         await foreach (var line in reader.ReadAllAsync(ct))
         {
             JsonElement value;
@@ -310,40 +400,36 @@ public static class CodexAppServer
                 continue; // 非 JSON 行（横幅/杂音）：跳过
             }
 
-            if (value.ValueKind != JsonValueKind.Object || !value.TryGetProperty("id", out var idProp))
+            if (value.ValueKind != JsonValueKind.Object ||
+                !value.TryGetProperty("id", out var idProp) ||
+                !idProp.TryGetInt64(out var responseId) ||
+                responseId != expectedId)
             {
-                continue; // 无 id 的通知：跳过
+                continue;
             }
 
-            if (!asked && idProp.GetInt64() == 1)
+            if (value.TryGetProperty("error", out var error) && error.ValueKind != JsonValueKind.Null)
             {
-                Log.Info("codex app-server: initialize ack received");
-                // initialize 应答到达 → 发通知 + 正式请求
-                await WriteLineAsync(proc, """{"method":"initialized"}""");
-                await WriteLineAsync(proc, """{"id":3,"method":"account/rateLimits/read"}""");
-                Log.Info("codex app-server: rateLimits request sent");
-                asked = true;
-            }
-            else if (idProp.GetInt64() == 3)
-            {
-                if (value.TryGetProperty("result", out var result) && result.ValueKind != JsonValueKind.Null)
-                {
-                    Log.Info("codex app-server: rateLimits result received");
-                    return result;
-                }
-                // id=3 但 result 缺失/为 null（如未登录）：向前走会超时，
-                // 直接抛出让上层给出明确错误
                 throw new InvalidOperationException(
-                    "account/rateLimits/read returned no result (codex 未登录?)");
+                    $"Codex app-server request {expectedId} failed: {error.GetRawText()}");
             }
+            if (value.TryGetProperty("result", out var result) && result.ValueKind != JsonValueKind.Null)
+            {
+                return result.Clone();
+            }
+            throw new InvalidOperationException(
+                $"Codex app-server request {expectedId} returned no result (codex 未登录?)");
         }
-        throw new TimeoutException("codex app-server closed stdout before answering");
+        throw new EndOfStreamException("Codex app-server closed stdout before answering");
     }
 
-    private static async Task WriteLineAsync(Process proc, string json)
+    private static async Task WriteLineAsync(
+        Process proc,
+        string json,
+        CancellationToken ct)
     {
         await proc.StandardInput.WriteLineAsync(json);
-        await proc.StandardInput.FlushAsync();
+        await proc.StandardInput.FlushAsync(ct);
     }
 
     /// <summary>解析 rateLimits 响应为快照列表（逻辑对照 Metrik parse_rate_limits）。</summary>
@@ -410,34 +496,78 @@ public static class CodexAppServer
         };
     }
 
-    /// <summary>杀整棵进程树（app-server 可能有孙进程）。taskkill 失败也兜底 Process.Kill。</summary>
-    private static void KillTree(Process? proc)
+    /// <summary>
+    /// 先关闭 stdin，让 app-server 按协议流结束；两秒内仍不退出时才强制清理。
+    /// 避免旧实现每次刷新都 taskkill /T /F，打断正在初始化的 git.exe。
+    /// </summary>
+    private static async Task StopSessionAsync()
     {
+        var proc = _sessionProcess;
+        var lifetime = _sessionLifetime;
+        var stdoutPump = _stdoutPump;
+        var stderrPump = _stderrPump;
+        _sessionProcess = null;
+        _sessionLines = null;
+        _sessionLifetime = null;
+        _stdoutPump = null;
+        _stderrPump = null;
+        _sessionCommandKey = null;
+
         if (proc == null)
         {
             return;
         }
+
         try
         {
             if (!proc.HasExited)
             {
-                var kill = new ProcessStartInfo
+                try
                 {
-                    FileName = Environment.ExpandEnvironmentVariables("%SystemRoot%\\System32\\taskkill.exe"),
-                    Arguments = $"/PID {proc.Id} /T /F",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                };
-                using var k = Process.Start(kill);
-                k?.WaitForExit(5000);
+                    proc.StandardInput.Close();
+                    using var gracefulTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                    await proc.WaitForExitAsync(gracefulTimeout.Token);
+                    Log.Info($"codex app-server exited gracefully, pid={proc.Id}");
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Info($"codex app-server graceful shutdown timed out; terminating pid={proc.Id}");
+                    proc.Kill(entireProcessTree: true);
+                    await proc.WaitForExitAsync();
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            try { proc.Kill(entireProcessTree: true); } catch { /* 已退出 */ }
+            Log.Error("failed to stop codex app-server", ex);
+            try
+            {
+                if (!proc.HasExited)
+                {
+                    proc.Kill(entireProcessTree: true);
+                }
+            }
+            catch
+            {
+                // 已退出或句柄失效。
+            }
         }
         finally
         {
+            lifetime?.Cancel();
+            var pumps = new[] { stdoutPump, stderrPump }.Where(t => t != null).Cast<Task>().ToArray();
+            if (pumps.Length > 0)
+            {
+                try
+                {
+                    await Task.WhenAny(Task.WhenAll(pumps), Task.Delay(500));
+                }
+                catch
+                {
+                    // 排水任务只负责结束管道，不阻碍退出。
+                }
+            }
+            lifetime?.Dispose();
             proc.Dispose();
         }
     }

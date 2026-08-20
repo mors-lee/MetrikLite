@@ -7,7 +7,7 @@
 
   一款轻量、原生、以本地为先的 Windows 托盘工具：用清晰的数字图标显示 Codex 剩余百分比，点击即可查看短时与每周窗口、重置时间和实时状态。
 
-  [![Version](https://img.shields.io/badge/Version-1.1.1-4E82E8)](#下载与安装)
+  [![Version](https://img.shields.io/badge/Version-1.1.2-4E82E8)](#下载与安装)
   [![Windows](https://img.shields.io/badge/Windows_10%2F11-x64-0078D4?logo=windows11&logoColor=white)](#系统要求)
   [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](#本地构建)
   [![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](./LICENSE)
@@ -51,6 +51,7 @@ Codex 的额度藏在应用内部，工作时很难随时确认还剩多少、�
 ### 面向托盘工具的可靠性
 
 - 默认每 30 秒刷新，最低允许设置为 10 秒。
+- 在刷新之间复用同一个 Codex app-server，不再反复启动并强制结束进程树。
 - 电脑从睡眠恢复、任务栏重建或 Explorer 重启后自动恢复。
 - 单实例运行，避免重复出现多个托盘图标。
 - 找不到 CLI 时仍保留 `!` 状态图标，方便从右键菜单修复路径。
@@ -74,7 +75,7 @@ MetrikLite 独立实现公开的 Codex app-server JSON-RPC 通信流程：发送
 
 ### 推荐：引导安装版
 
-[**下载 MetrikLite 1.1.1 安装程序**](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.1/MetrikLite-Setup.exe)
+[**下载 MetrikLite 1.1.2 安装程序**](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.2/MetrikLite-Setup.exe)
 
 安装向导支持简体中文和英文，并会引导完成：
 
@@ -92,8 +93,8 @@ MetrikLite 独立实现公开的 Codex app-server JSON-RPC 通信流程：发送
 
 ### 免安装版
 
-- [单文件 EXE](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.1/MetrikLite.exe)
-- [便携版 ZIP](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.1/MetrikLite-portable-win-x64.zip)
+- [单文件 EXE](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.2/MetrikLite.exe)
+- [便携版 ZIP](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.2/MetrikLite-portable-win-x64.zip)
 - [查看全部版本与发布说明](https://github.com/mors-lee/MetrikLite/releases)
 
 安装包约 67 MB，因为它包含完整的 .NET 8 Windows x64 运行时，目标电脑无需另外安装 .NET。当前安装包尚未进行 Authenticode 商业证书签名，首次运行可能出现 Microsoft Defender SmartScreen 提示；请只从本仓库的 Release 页面下载。
@@ -231,7 +232,7 @@ installer/                中英双语 Inno Setup 安装脚本
 ## 项目边界
 
 - 当前正式支持 Codex，代码中的 Agent 抽象用于未来扩展，并不表示其他平台已经可用。
-- 每次刷新会启动一次短生命周期的 Codex app-server 子进程，不建议把间隔设置得过短。
+- Codex app-server 在刷新之间复用，退出时先正常关闭标准输入并等待；只有异常超时才强制清理。
 - Windows 托盘位置由系统 Shell 管理，应用无法强制把自己固定在直接可见区域。
 - 本项目不是 OpenAI 官方产品，也不代表 OpenAI。
 

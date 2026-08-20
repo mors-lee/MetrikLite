@@ -7,7 +7,7 @@
 
   A lightweight, native, local-first Windows tray utility that renders the remaining Codex percentage as a clear numeric icon and shows quota windows, reset times, and live status in a compact panel.
 
-  [![Version](https://img.shields.io/badge/Version-1.1.1-4E82E8)](#download-and-install)
+  [![Version](https://img.shields.io/badge/Version-1.1.2-4E82E8)](#download-and-install)
   [![Windows](https://img.shields.io/badge/Windows_10%2F11-x64-0078D4?logo=windows11&logoColor=white)](#requirements)
   [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](#build-from-source)
   [![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](./LICENSE)
@@ -37,6 +37,7 @@ Codex quota information is easy to lose sight of while working. MetrikLite reduc
 - Separate short-window and weekly-window cards with percentages and reset times on distinct lines.
 - Apple-clean light panel positioned above the notification area, including high-DPI and multi-monitor handling.
 - Automatic recovery after sleep, Explorer restart, and taskbar recreation.
+- One reusable Codex app-server session across refreshes instead of repeated process-tree termination.
 - Manual refresh, update checks, configurable startup, CLI selection, and local logs.
 - Local Codex app-server communication with no MetrikLite cloud service.
 
@@ -58,7 +59,7 @@ MetrikLite implements the public Codex app-server JSON-RPC flow using `initializ
 
 ### Recommended: guided installer
 
-[**Download MetrikLite 1.1.1 Setup**](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.1/MetrikLite-Setup.exe)
+[**Download MetrikLite 1.1.2 Setup**](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.2/MetrikLite-Setup.exe)
 
 The installer supports Simplified Chinese and English and guides you through:
 
@@ -76,8 +77,8 @@ No administrator privileges are required. The installer never asks for a GitHub 
 
 ### Portable downloads
 
-- [Standalone EXE](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.1/MetrikLite.exe)
-- [Portable ZIP](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.1/MetrikLite-portable-win-x64.zip)
+- [Standalone EXE](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.2/MetrikLite.exe)
+- [Portable ZIP](https://github.com/mors-lee/MetrikLite/releases/download/v1.1.2/MetrikLite-portable-win-x64.zip)
 - [All releases and release notes](https://github.com/mors-lee/MetrikLite/releases)
 
 The installer is roughly 67 MB because it includes the complete .NET 8 Windows x64 runtime. Current builds are not Authenticode-signed and may trigger Microsoft Defender SmartScreen on first launch; download them only from this repository's Releases page.
@@ -192,7 +193,7 @@ Pushing a `v*` tag builds the self-contained EXE, bilingual installer, and porta
 ## Project scope
 
 - Codex is the currently supported production adapter.
-- Every refresh starts a short-lived Codex app-server child process; extremely short intervals are discouraged.
+- A single Codex app-server session is reused across refreshes and shut down gracefully; forceful cleanup is only a timeout fallback.
 - Notification-area placement is controlled by Windows Shell, not the application.
 - MetrikLite is not an official OpenAI product and is not affiliated with OpenAI.
 

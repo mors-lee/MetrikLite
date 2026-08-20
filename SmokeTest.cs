@@ -24,8 +24,17 @@ public static class SmokeTest
             report.AppendLine($"MetrikLite smoke test @ {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             report.AppendLine();
 
+            var firstRead = CodexAppServer.ReadAsync(TimeSpan.FromSeconds(30))
+                .GetAwaiter().GetResult();
             var snapshots = CodexAppServer.ReadAsync(TimeSpan.FromSeconds(30))
                 .GetAwaiter().GetResult();
+            report.AppendLine(
+                $"[Codex session] first={firstRead.Count}, second={snapshots.Count} " +
+                "(第二次读取应复用同一 app-server 进程)");
+            if (firstRead.Count > 0 && snapshots.Count == 0)
+            {
+                throw new InvalidOperationException("可复用 Codex app-server 的第二次读取失败。");
+            }
             report.AppendLine($"[Codex] app-server snapshots = {snapshots.Count}");
             foreach (var snapshot in snapshots)
             {
@@ -98,6 +107,10 @@ public static class SmokeTest
                 // 输出目录不可写时，保留控制台异常即可。
             }
             return 1;
+        }
+        finally
+        {
+            CodexAppServer.ShutdownAsync().GetAwaiter().GetResult();
         }
     }
 
