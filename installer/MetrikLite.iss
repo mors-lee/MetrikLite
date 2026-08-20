@@ -25,7 +25,7 @@
 
 ; 版本号唯一入口（发布时与 git tag 保持一致，如 v1.0.0 → "1.0.0"）
 #define MyAppName "MetrikLite"
-#define MyAppVersion "1.0.7"
+#define MyAppVersion "1.0.8"
 #define MyAppPublisher "Mors"
 #define MyAppExeName "MetrikLite.exe"
 #define MyAppId "{{9F6B2C41-8D3E-4A57-B1C0-2E8D5A9F7B43}"
@@ -36,6 +36,7 @@ AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+SetupIconFile=..\MetrikLite.ico
 ; 每用户安装：{autopf} 在 lowest 权限下解析为 %LocalAppData%\Programs
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
