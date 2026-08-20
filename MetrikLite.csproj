@@ -30,9 +30,9 @@
     <RootNamespace>MetrikLite</RootNamespace>
     <AssemblyName>MetrikLite</AssemblyName>
     <ApplicationIcon>MetrikLite.ico</ApplicationIcon>
-    <Version>1.0.9</Version>
-    <AssemblyVersion>1.0.9.0</AssemblyVersion>
-    <FileVersion>1.0.9.0</FileVersion>
+    <Version>1.0.10</Version>
+    <AssemblyVersion>1.0.10.0</AssemblyVersion>
+    <FileVersion>1.0.10.0</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <InvariantGlobalization>false</InvariantGlobalization>
