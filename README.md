@@ -237,8 +237,7 @@ installer/                中英双语 Inno Setup 安装脚本
 
 ## 致谢
 
-- 配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发。
-- 安装器体验与 README 信息层级参考了 [Pythia](https://github.com/douxy1994/Pythia)。
+- 配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发，如果在用多个AI coding工具，请移步雨神的这个项目。
 
 ## License
 
