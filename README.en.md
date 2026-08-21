@@ -133,6 +133,6 @@ Every official Release is built from a public `v*` tag by GitHub Actions. The wo
 
 ## License and attribution
 
-MetrikLite is distributed under the [MIT License](LICENSE). The Rust/Tauri v2 implementation was written independently and does not copy AGPL source from `keros68/metrik`.
+MetrikLite is distributed under the [MIT License](LICENSE). The Rust/Tauri v2 implementation was written independently.
 
 The quota-tray concept was inspired by [Metrik](https://github.com/keros68/metrik). MetrikLite is not an official OpenAI product.
