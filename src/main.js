@@ -43,16 +43,11 @@ function formatReset(timestamp) {
   return `重置：${absolute} · ${relative}`;
 }
 
-function setWindow(key, quota) {
-  const percent = $(`#${key}-percent`);
-  const meter = $(`#${key}-meter`);
-  const reset = $(`#${key}-reset`);
-  if (!quota) {
-    percent.textContent = "—";
-    meter.style.width = "0%";
-    reset.textContent = "Codex 本次未返回此窗口";
-    return;
-  }
+function setWeeklyWindow(quota) {
+  const percent = $("#secondary-percent");
+  const meter = $("#secondary-meter");
+  const reset = $("#secondary-reset");
+  if (!quota) return;
   const remaining = Math.max(0, Math.min(100, quota.remaining_percent));
   percent.textContent = formatPercent(remaining);
   meter.style.width = `${remaining}%`;
@@ -64,14 +59,13 @@ function renderState(state) {
   appState = state;
   const dotClass = state.status === "ready" ? "live" : state.status === "error" ? "error" : "";
   elements.status.innerHTML = `<span class="status-dot ${dotClass}"></span><span>${state.status_text}</span>`;
-  const primary = state.windows.find((item) => item.window_key === "primary");
   const secondary = state.windows.find((item) => item.window_key === "secondary");
-  setWindow("primary", primary);
-  setWindow("secondary", secondary);
-  const hasQuota = Boolean(primary || secondary);
+  setWeeklyWindow(secondary);
+  const hasQuota = Boolean(secondary);
   elements.content.classList.toggle("hidden", !hasQuota);
   elements.empty.classList.toggle("hidden", hasQuota);
-  elements.emptyMessage.textContent = state.error_message || "请确认已安装并登录独立 Codex CLI。";
+  elements.emptyMessage.textContent = state.error_message
+    || (state.status === "ready" ? "Codex 当前未提供每周配额。" : "请确认已安装并登录独立 Codex CLI。");
   elements.updatedAt.textContent = state.refreshed_at_ms
     ? `更新于 ${new Date(state.refreshed_at_ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`
     : "尚未刷新";
@@ -107,11 +101,13 @@ async function refresh() {
 }
 
 function openSettings() {
+  invoke("set_panel_expanded", { expanded: true });
   elements.settings.classList.remove("hidden");
 }
 
 function closeSettings() {
   elements.settings.classList.add("hidden");
+  invoke("set_panel_expanded", { expanded: false });
 }
 
 async function saveSettings() {
@@ -200,6 +196,7 @@ try {
   ]);
   renderState(initialState);
   populateSettings(initialConfig);
+  await invoke("set_panel_expanded", { expanded: false });
 } catch (error) {
   showToast(`初始化失败：${error}`, 5000);
 }

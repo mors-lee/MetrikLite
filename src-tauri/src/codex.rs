@@ -367,33 +367,38 @@ fn is_known_unrelated(path: &Path) -> bool {
 }
 
 pub fn parse_rate_limits(result: &Value) -> Vec<QuotaWindow> {
-    let limits = result
-        .get("rateLimits")
-        .filter(|value| !value.is_null())
-        .or_else(|| {
-            result
-                .get("rateLimitsByLimitId")
-                .or_else(|| result.get("rate_limits_by_limit_id"))
-                .and_then(|by_id| by_id.get("codex"))
-                .filter(|value| !value.is_null())
-        });
-    let Some(limits) = limits else {
-        return Vec::new();
-    };
-
     let collected_at_ms = chrono::Utc::now().timestamp_millis();
-    ["primary", "secondary"]
-        .into_iter()
-        .filter_map(|slot| {
-            let window = limits.get(slot)?;
-            let used_percent = window.get("usedPercent")?.as_f64()?;
+    let direct = result.get("rateLimits").filter(|value| !value.is_null());
+    let by_id = result
+        .get("rateLimitsByLimitId")
+        .or_else(|| result.get("rate_limits_by_limit_id"))
+        .and_then(|limits| limits.get("codex"))
+        .filter(|value| !value.is_null());
+    let mut windows = Vec::new();
+
+    // 优先采用 rateLimits，但按窗口补齐 rateLimitsByLimitId.codex，避免一个
+    // 来源只返回周窗时把另一个来源中的短时窗口整体丢掉。
+    for limits in [direct, by_id].into_iter().flatten() {
+        for slot in ["primary", "secondary"] {
+            let Some(window) = limits.get(slot).filter(|value| !value.is_null()) else {
+                continue;
+            };
+            let Some(used_percent) = window.get("usedPercent").and_then(Value::as_f64) else {
+                continue;
+            };
             let duration_minutes = window.get("windowDurationMins").and_then(Value::as_i64);
             let window_key = match duration_minutes {
                 Some(minutes) if minutes <= 1440 => "primary",
                 Some(_) => "secondary",
                 None => slot,
             };
-            Some(QuotaWindow {
+            if windows
+                .iter()
+                .any(|item: &QuotaWindow| item.window_key == window_key)
+            {
+                continue;
+            }
+            windows.push(QuotaWindow {
                 adapter_id: "codex".into(),
                 window_key: window_key.into(),
                 remaining_percent: (100.0 - used_percent).clamp(0.0, 100.0),
@@ -404,9 +409,10 @@ pub fn parse_rate_limits(result: &Value) -> Vec<QuotaWindow> {
                 collected_at_ms,
                 quality: "official_live".into(),
                 source_label: "Codex app-server".into(),
-            })
-        })
-        .collect()
+            });
+        }
+    }
+    windows
 }
 
 #[cfg(test)]
@@ -441,6 +447,26 @@ mod tests {
         }));
         assert_eq!(windows.len(), 1);
         assert_eq!(windows[0].remaining_percent, 90.0);
+    }
+
+    #[test]
+    fn merges_missing_short_window_from_by_limit_id() {
+        let windows = parse_rate_limits(&json!({
+            "rateLimits": {
+                "primary": { "usedPercent": 67, "windowDurationMins": 10_080 }
+            },
+            "rateLimitsByLimitId": {
+                "codex": {
+                    "primary": { "usedPercent": 25, "windowDurationMins": 300 },
+                    "secondary": { "usedPercent": 67, "windowDurationMins": 10_080 }
+                }
+            }
+        }));
+        assert_eq!(windows.len(), 2);
+        assert!(windows.iter().any(|window| window.window_key == "primary"));
+        assert!(windows
+            .iter()
+            .any(|window| window.window_key == "secondary"));
     }
 
     #[test]

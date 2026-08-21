@@ -12,7 +12,7 @@ use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, AppHandle, Emitter, Manager, State,
+    App, AppHandle, Emitter, LogicalSize, Manager, Size, State,
 };
 use tokio::sync::{Mutex, RwLock};
 
@@ -95,6 +95,19 @@ fn hide_panel(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_panel_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
+    let Some(window) = app.get_webview_window("main") else {
+        return Ok(());
+    };
+    let height = if expanded { 470.0 } else { 300.0 };
+    window
+        .set_size(Size::Logical(LogicalSize::new(380.0, height)))
+        .map_err(|error| error.to_string())?;
+    let (x, y) = tray_icon::cursor_position();
+    tray_icon::position_panel(&window, x, y).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn quit_app(app: AppHandle) -> Result<(), String> {
     shutdown_and_exit(app).await;
     Ok(())
@@ -133,11 +146,30 @@ fn update_tray(app: &AppHandle, payload: &AppPayload, light_glyphs: bool) {
         return;
     };
     let _ = tray.set_icon(Some(tray_icon::render(payload.tray_percent, light_glyphs)));
-    let tooltip = match payload.tray_percent {
-        Some(percent) => format!("Codex 剩余 {percent}%"),
-        None => "MetrikLite：点击查看并设置 Codex CLI".into(),
-    };
+    let tooltip = tray_tooltip(payload);
     let _ = tray.set_tooltip(Some(tooltip));
+}
+
+fn tray_tooltip(payload: &AppPayload) -> String {
+    let Some(percent) = payload.tray_percent else {
+        return "MetrikLite：点击查看并设置 Codex CLI".into();
+    };
+    let reset = payload
+        .windows
+        .iter()
+        .find(|window| window.window_key == "secondary")
+        .and_then(|window| window.resets_at_ms)
+        .and_then(chrono::DateTime::<chrono::Utc>::from_timestamp_millis)
+        .map(|timestamp| {
+            timestamp
+                .with_timezone(&chrono::Local)
+                .format("%m-%d %H:%M")
+                .to_string()
+        });
+    match reset {
+        Some(reset) => format!("Codex 剩余 {percent}%\n重置 {reset}"),
+        None => format!("Codex 剩余 {percent}%\n重置时间暂未提供"),
+    }
 }
 
 fn show_panel(app: &AppHandle, position: Option<(f64, f64)>) {
@@ -293,8 +325,30 @@ fn main() {
             choose_codex_binary,
             open_url,
             hide_panel,
+            set_panel_expanded,
             quit_app
         ])
         .run(tauri::generate_context!())
         .expect("failed to run MetrikLite");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tray_tooltip;
+    use crate::models::{AppPayload, QuotaWindow};
+
+    #[test]
+    fn tooltip_has_percentage_and_reset_on_separate_lines() {
+        let payload = AppPayload::ready(vec![QuotaWindow {
+            adapter_id: "codex".into(),
+            window_key: "secondary".into(),
+            remaining_percent: 42.0,
+            resets_at_ms: Some(1_900_000_000_000),
+            collected_at_ms: 1_800_000_000_000,
+            quality: "official_live".into(),
+            source_label: "Codex app-server".into(),
+        }]);
+        let tooltip = tray_tooltip(&payload);
+        assert!(tooltip.starts_with("Codex 剩余 42%\n重置 "));
+    }
 }

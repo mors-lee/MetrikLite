@@ -40,11 +40,9 @@ impl AppPayload {
         let now = chrono::Utc::now().timestamp_millis();
         let tray_percent = windows
             .iter()
-            .filter(|item| item.resets_at_ms.map(|reset| reset > now).unwrap_or(true))
-            .min_by(|left, right| {
-                left.remaining_percent
-                    .partial_cmp(&right.remaining_percent)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+            .find(|item| {
+                item.window_key == "secondary"
+                    && item.resets_at_ms.map(|reset| reset > now).unwrap_or(true)
             })
             .map(|item| item.remaining_percent.round().clamp(0.0, 100.0) as i32);
 
@@ -69,5 +67,28 @@ impl AppPayload {
             tray_percent: None,
             refreshed_at_ms: Some(chrono::Utc::now().timestamp_millis()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AppPayload, QuotaWindow};
+
+    fn window(key: &str, remaining_percent: f64) -> QuotaWindow {
+        QuotaWindow {
+            adapter_id: "codex".into(),
+            window_key: key.into(),
+            remaining_percent,
+            resets_at_ms: Some(1_900_000_000_000),
+            collected_at_ms: 1_800_000_000_000,
+            quality: "official_live".into(),
+            source_label: "Codex app-server".into(),
+        }
+    }
+
+    #[test]
+    fn tray_uses_weekly_window_only() {
+        let payload = AppPayload::ready(vec![window("primary", 8.0), window("secondary", 63.0)]);
+        assert_eq!(payload.tray_percent, Some(63));
     }
 }
