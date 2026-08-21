@@ -5,60 +5,92 @@
 </p>
 
 <p align="center">
-  轻量、原生、以本地为先的 Windows Codex 配额托盘工具。
+  <strong>在 Windows 托盘直接查看 Codex 每周剩余配额与重置时间。</strong><br />
+  轻量、原生、本地优先，不读取对话和项目文件。
 </p>
 
 <p align="center">
-  <a href="https://github.com/mors-lee/MetrikLite/releases/latest"><img alt="Version" src="https://img.shields.io/badge/Version-2.0.1-4E82E8"></a>
+  <a href="https://github.com/mors-lee/MetrikLite/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/mors-lee/MetrikLite?color=4E82E8&label=Release"></a>
+  <a href="https://github.com/mors-lee/MetrikLite/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mors-lee/MetrikLite/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/mors-lee/MetrikLite/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/mors-lee/MetrikLite/actions/workflows/codeql.yml/badge.svg"></a>
   <img alt="Windows" src="https://img.shields.io/badge/Windows_10%2F11-x64-0078D4?logo=windows11&logoColor=white">
-  <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white">
-  <img alt="Tauri" src="https://img.shields.io/badge/Tauri_2-24C8DB?logo=tauri&logoColor=white">
   <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-2ea44f"></a>
 </p>
 
 <p align="center">
   <a href="./README.en.md">English</a> ·
   <a href="https://github.com/mors-lee/MetrikLite/releases/latest">下载最新版</a> ·
-  <a href="https://github.com/mors-lee/MetrikLite/issues">反馈问题</a>
+  <a href="https://github.com/mors-lee/MetrikLite/issues">问题反馈</a> ·
+  <a href="./SECURITY.md">安全策略</a>
 </p>
 
-![MetrikLite Tauri 配额面板](docs/images/details-panel-v2.png)
+## 一眼了解
 
-## 为什么使用 MetrikLite
+MetrikLite 将 Codex **每周剩余百分比**绘制成 Windows 通知区域数字图标。无需打开窗口，就能看到当前余量；将鼠标停在数字上，还会显示重置时间。
 
-Codex 的配额和重置时间不应打断正在进行的工作。MetrikLite 将当前最紧张的剩余百分比绘制成 Windows 通知区域数字图标，左键即可查看短时与每周窗口。
+- **托盘直接读数**：`8`、`28`、`100` 自动缩放并光学居中。
+- **悬停查看重置**：提示分两行显示剩余百分比与重置日期。
+- **紧凑周配额面板**：左键点击托盘数字，在当前显示器右下角展开。
+- **适配多显示器和高 DPI**：面板锚定工作区，不遮挡任务栏，圆角完整。
+- **本地优先**：复用本机 Codex app-server，不建立 MetrikLite 云端账户。
+- **体积小**：Rust + Tauri 2，正式 NSIS 安装包约 1.3 MB。
+- **常用功能齐全**：开机自启、手动刷新、CLI 路径选择、更新检查。
 
-- 数字托盘图标：`8`、`10`、`100` 都会自动缩放并光学居中。
-- 两行信息：剩余百分比与重置时间分开显示。
-- 苹果式轻量面板：透明、干净，自动适配多显示器和高 DPI。
-- 本地读取：复用一个持久 Codex app-server，不上传账户数据。
-- 无 Codex 也可启动：显示 `!` 状态，可从设置选择独立 CLI。
-- 开机自启、手动刷新、Codex 路径选择和更新检查。
-- Rust + Tauri 2：安装包不再捆绑完整 .NET Desktop Runtime。
+> v2.0.1 起，主界面和托盘数字只使用 Codex 每周窗口，不再显示短时窗口。
 
-## 下载与安装
+## 下载
 
-前往 [Releases](https://github.com/mors-lee/MetrikLite/releases/latest)，选择：
+### 推荐：安装向导
 
-- `MetrikLite_*_x64-setup.exe`：推荐，当前用户安装向导。
-- `MetrikLite_*_x64_en-US.msi`：适合 MSI 部署。
-- `MetrikLite-portable.exe`：免安装便携版。
-- `SHA256SUMS.txt`：所有正式附件的 SHA256。
-- `MetrikLite-SBOM.spdx.json`：SPDX 软件物料清单。
+[下载 MetrikLite v2.0.1 安装包](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.1/MetrikLite_2.0.1_x64-setup.exe)
 
-安装器面向 Windows 10/11 x64。系统缺少 Microsoft Edge WebView2 Runtime 时，安装器会从微软官方下载引导程序；Windows 11 和大多数 Windows 10 电脑已经预装。
+也可以前往 [Latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) 获取当前最新版：
 
-> 当前公开构建尚未配置 Authenticode 商业证书，SmartScreen 可能显示“未知发布者”。请只从本仓库 Releases 下载，并核对 SHA256。签名状态与杀毒检测结果都不能单独证明绝对安全。
+| 文件 | 用途 |
+| --- | --- |
+| `MetrikLite_*_x64-setup.exe` | 推荐，当前用户 NSIS 安装向导 |
+| `MetrikLite_*_x64_en-US.msi` | MSI 部署或企业软件分发 |
+| `MetrikLite-portable.exe` | 免安装便携版 |
+| `SHA256SUMS.txt` | Release 附件 SHA256 校验值 |
+| `MetrikLite-SBOM.spdx.json` | SPDX JSON 软件物料清单 |
 
-## 使用方法
+系统要求：Windows 10/11 x64。若系统没有 Microsoft Edge WebView2 Runtime，安装器会使用微软官方引导程序安装；Windows 11 和多数 Windows 10 设备已经预装。
 
-1. 安装并启动 MetrikLite。
-2. 托盘数字表示当前未过期窗口中剩余百分比最低的一项。
-3. 左键托盘图标显示或隐藏配额面板。
-4. 右键可立即刷新、打开设置、检查更新或退出。
-5. 设置页可选择独立 `codex.exe`、`codex.cmd` 或 `codex.bat`。
+## 安装与首次使用
 
-默认每 30 秒刷新，设置范围为 10–300 秒。配置兼容 v1，继续使用：
+1. 从本仓库 Releases 下载 `MetrikLite_*_x64-setup.exe`。
+2. 运行安装向导并启动 MetrikLite。
+3. 如果已经安装并登录独立 Codex CLI，托盘会显示每周剩余百分比。
+4. 左键点击托盘数字查看详情；右键打开功能菜单。
+5. 如果未自动识别 Codex，在“设置”中选择 `codex.exe`、`codex.cmd` 或 `codex.bat`。
+
+### Windows 显示“未知发布者”
+
+当前公开版本尚未配置 Authenticode 商业代码签名证书，因此 SmartScreen 可能提示“未知发布者”。这不等同于检测到病毒，但也不应被忽略：
+
+1. 只从 `github.com/mors-lee/MetrikLite/releases` 下载。
+2. 使用 Release 中的 `SHA256SUMS.txt` 核对文件哈希。
+3. 可结合 Windows Defender、VirusTotal、源码审查和 GitHub Actions 构建记录判断。
+
+任何单一信号——包括代码签名或 VirusTotal `0/70`——都不能证明软件绝对安全。
+
+## 使用说明
+
+### 托盘图标
+
+| 显示 | 含义 |
+| --- | --- |
+| `0`–`100` | Codex 每周剩余百分比 |
+| 红色数字 | 剩余配额不高于 20% |
+| `!` | 暂时无法读取 Codex 配额 |
+
+- **鼠标悬停**：显示“Codex 剩余 xx%”和“重置 MM-DD HH:MM”。
+- **左键点击**：显示或隐藏紧凑配额面板。
+- **右键点击**：显示配额、立即刷新、设置、检查更新、下载页面和退出。
+
+### 刷新与配置
+
+默认每 30 秒刷新一次，可在 10–300 秒之间调整。配置和日志位于：
 
 ```text
 %APPDATA%\MetrikLite\config.json
@@ -66,73 +98,76 @@ Codex 的配额和重置时间不应打断正在进行的工作。MetrikLite 将
 %LOCALAPPDATA%\MetrikLite\Runtime
 ```
 
-## 没安装 Codex 时会怎样
+开机自启仅写入当前用户的：
 
-MetrikLite 不会退出或隐藏所有入口，而是保留 `!` 托盘图标和空状态面板。安装并登录独立 Codex CLI 后点击“立即刷新”即可。
+```text
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MetrikLite
+```
 
-自动查找顺序：
+## 没有安装 Codex 会怎样
+
+MetrikLite 不会崩溃或消失，而是保留 `!` 托盘图标和可操作的设置入口。安装并登录独立 Codex CLI 后，点击“立即刷新”即可。
+
+Codex CLI 自动查找顺序：
 
 1. `CODEX_BINARY` 环境变量。
-2. 设置中保存的路径。
-3. 官方 WinGet `OpenAI.Codex_*` 包，优先原生 Windows EXE。
+2. MetrikLite 设置中保存的路径。
+3. 官方 WinGet `OpenAI.Codex_*` 包中的原生 Windows EXE。
 4. `%APPDATA%\npm\codex.cmd`。
 5. `PATH` 中的 Codex CLI。
 
-受保护的 `WindowsApps` 内置路径和已知的同名第三方启动器会被跳过。
+受保护的 `WindowsApps` 内置路径和已知同名第三方启动器会被跳过，避免启动失败或误用其他程序。
+
+## 隐私与联网范围
+
+### 会读取
+
+- MetrikLite 自己的本地配置和日志目录。
+- 用户指定或自动找到的 Codex CLI 文件路径。
+- Codex app-server 返回的每周配额百分比、窗口时长和重置时间。
+- Windows 字体目录中的 Segoe UI Semibold/Bold，仅用于渲染托盘数字。
+
+### 不会读取
+
+- Codex 对话、提示词、回答或聊天历史。
+- 项目源码、Git 仓库内容、文档或剪贴板。
+- GitHub 密码、验证码、Token。
+- 浏览器 Cookie、历史记录或保存的密码。
+- Codex 凭据文件内容。
+
+MetrikLite 不读取敏感凭据，因此不需要“允许读取凭据”的开关。Codex 登录完全由 Codex CLI 自己负责。
+
+### MetrikLite 自身请求的域名
+
+| 域名 | 何时请求 | 用途 |
+| --- | --- | --- |
+| `api.github.com` | 用户点击“检查更新” | 获取公开 Release 版本信息 |
+| `github.com` | 用户主动打开下载页面 | 由默认浏览器显示 Release |
+
+Codex CLI 为获取账户配额而访问的 OpenAI 服务属于 Codex 自身通信，不经过 MetrikLite 服务器。MetrikLite 没有自己的云服务、分析服务或广告 SDK。
 
 ## 工作原理
 
 ```text
-Tauri 托盘
-   │ 每 10–300 秒或手动刷新
-   ▼
-Rust Codex 会话管理器
-   │ initialize（只执行一次）
-   │ account/rateLimits/read（复用同一进程）
-   ▼
-本机 codex app-server
-   │ JSON-RPC stdout
-   ▼
-配额窗口 → 动态数字图标 + WebView2 面板
+Windows 托盘数字 / 紧凑面板
+              │
+              │ 每 10–300 秒或手动刷新
+              ▼
+      Rust Codex 会话管理器
+              │ initialize（一次）
+              │ account/rateLimits/read
+              ▼
+      本机 codex app-server
+              │ JSON-RPC stdout
+              ▼
+       每周配额与重置时间
 ```
 
-应用不会在每次刷新后强制终止进程树。CLI 路径不变时复用同一个 app-server；退出时先关闭标准输入并等待正常结束，只有超时才终止直接子进程。
-
-## 隐私与联网范围
-
-### MetrikLite 会读取
-
-- `%APPDATA%\MetrikLite\config.json` 中的本地偏好设置。
-- 用户指定或自动找到的 Codex CLI 文件路径。
-- Codex app-server 返回的 `rateLimits`、窗口时长和重置时间。
-- Windows 字体目录中的 Segoe UI Semibold/Bold，仅用于托盘数字渲染。
-
-### MetrikLite 不会读取
-
-- Codex 对话正文、提示词或回答。
-- 项目源码、Git 仓库内容或剪贴板。
-- GitHub 密码、验证码、Token。
-- 浏览器 Cookie、历史记录或保存的密码。
-- Codex 凭据文件内容。登录由 Codex CLI 自己负责。
-
-### MetrikLite 自身请求的域名
-
-- `api.github.com`：仅在用户点击“检查更新”时读取公开 Release 元数据。
-- `github.com`：用户主动打开下载页面时由默认浏览器访问。
-
-Codex CLI 为读取账户配额而访问的 OpenAI 服务属于 Codex 自身通信，不经过 MetrikLite 服务器。MetrikLite 没有自己的云服务。
+CLI 路径不变时，MetrikLite 复用同一个 app-server 进程。退出时先关闭标准输入并等待正常结束，只有超时才终止直接子进程。
 
 ## 从源码构建
 
-### 环境
-
-- Windows 10/11 x64
-- Rust stable MSVC
-- Visual Studio 2022 Build Tools：Desktop development with C++
-- Node.js 22+
-- WebView2 Runtime
-
-### 命令
+要求：Windows 10/11 x64、Rust stable MSVC、Visual Studio 2022 Build Tools（Desktop development with C++）、Node.js 22+ 和 WebView2 Runtime。
 
 ```powershell
 npm ci
@@ -142,48 +177,40 @@ npm run tauri build
 开发检查：
 
 ```powershell
+npm audit --audit-level=high
 node --check src\main.js
 cargo fmt --manifest-path src-tauri\Cargo.toml --all -- --check
 cargo test --manifest-path src-tauri\Cargo.toml --locked
 cargo clippy --manifest-path src-tauri\Cargo.toml --locked --all-targets -- -D warnings
 ```
 
-构建产物位于：
+## 自动构建与供应链
 
-```text
-src-tauri\target\release\metriklite.exe
-src-tauri\target\release\bundle\nsis\
-src-tauri\target\release\bundle\msi\
-```
+正式 Release 全部由 GitHub Actions 从公开标签自动构建，不接受本地手工编译后上传：
 
-## 自动发布与供应链
-
-推送与 `Cargo.toml`、`tauri.conf.json` 一致的 `v*` 标签后，GitHub Actions 会：
-
-1. 从公开源码构建 Rust/Tauri Release。
-2. 生成 NSIS、MSI 和便携 EXE。
+1. 校验 Git 标签与应用版本一致。
+2. 构建 NSIS、MSI 和便携 EXE。
 3. 生成 SPDX JSON SBOM。
-4. 为所有附件生成 `SHA256SUMS.txt`。
-5. 自动创建 GitHub Release，不接受本地手工编译后上传。
+4. 生成 `SHA256SUMS.txt`。
+5. 上传到公开 GitHub Release。
 
-仓库同时启用 Dependabot、CodeQL、`cargo audit` 和 `npm audit`。安全问题请参阅 [SECURITY.md](SECURITY.md)。
+仓库还启用了 Dependabot、CodeQL、`cargo audit` 和 `npm audit`。漏洞报告方式参见 [SECURITY.md](SECURITY.md)。
 
 ## 项目结构
 
 ```text
-src/                         无框架 HTML/CSS/JS 面板
-src-tauri/src/main.rs        Tauri 生命周期、托盘与前端命令
+src/                         无框架 HTML/CSS/JavaScript 面板
+src-tauri/src/main.rs        Tauri 生命周期、托盘和前端命令
 src-tauri/src/codex.rs       持久 Codex JSON-RPC 会话
-src-tauri/src/tray_icon.rs   Segoe UI 数字图标与托盘定位
-src-tauri/src/config.rs      配置与当前用户开机自启
-src-tauri/tauri.conf.json    Windows 窗口和 NSIS/MSI 打包
-.github/workflows/           CI、CodeQL、Release
+src-tauri/src/models.rs      配额状态和每周托盘选择逻辑
+src-tauri/src/tray_icon.rs   数字渲染、缩放与面板定位
+src-tauri/src/config.rs      配置和当前用户开机自启
+src-tauri/tauri.conf.json    窗口及 NSIS/MSI 打包配置
+.github/workflows/           CI、CodeQL 和 Release
 ```
 
-## 许可证与独立实现
+## 许可证与声明
 
-MetrikLite 使用 [MIT License](LICENSE)。Rust/Tauri v2 是针对本项目需求的独立实现，没有复制 `keros68/metrik` 的 AGPL 源码。
+MetrikLite 使用 [MIT License](LICENSE)。Rust/Tauri v2 版本是针对本项目需求的独立实现，没有复制 `keros68/metrik` 的 AGPL 源码。
 
-配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发。如果你同时使用多个 AI coding 工具，或希望体验更多功能，可以查看[雨神的项目](https://github.com/keros68)。
-
-MetrikLite 不是 OpenAI 官方产品，也不代表 OpenAI。
+配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发。MetrikLite 不是 OpenAI 官方产品，也不代表 OpenAI。
