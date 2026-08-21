@@ -182,4 +182,8 @@ src-tauri/tauri.conf.json    Windows 窗口和 NSIS/MSI 打包
 
 ## 许可证与独立实现
 
-MetrikLite 使用 [MIT License](LICENSE)。Rust/Tauri v2 是针对本项目需求的独立实现，没有复制 `keros68/metrik` 的 AGPL 源码。项目不是 OpenAI 官方产品，也不代表 OpenAI。
+MetrikLite 使用 [MIT License](LICENSE)。Rust/Tauri v2 是针对本项目需求的独立实现，没有复制 `keros68/metrik` 的 AGPL 源码。
+
+配额托盘思路受到 [Metrik](https://github.com/keros68/metrik) 启发。如果你同时使用多个 AI coding 工具，或希望体验更多功能，可以查看[雨神的项目](https://github.com/keros68)。
+
+MetrikLite 不是 OpenAI 官方产品，也不代表 OpenAI。
