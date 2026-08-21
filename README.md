@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mors-lee/MetrikLite/releases/latest"><img alt="Version" src="https://img.shields.io/badge/Version-2.0.0-4E82E8"></a>
+  <a href="https://github.com/mors-lee/MetrikLite/releases/latest"><img alt="Version" src="https://img.shields.io/badge/Version-2.0.1-4E82E8"></a>
   <img alt="Windows" src="https://img.shields.io/badge/Windows_10%2F11-x64-0078D4?logo=windows11&logoColor=white">
   <img alt="Rust" src="https://img.shields.io/badge/Rust-stable-000000?logo=rust&logoColor=white">
   <img alt="Tauri" src="https://img.shields.io/badge/Tauri_2-24C8DB?logo=tauri&logoColor=white">
