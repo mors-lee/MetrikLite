@@ -1,4 +1,10 @@
-# 构建产物
+# Rust / Tauri / Node 构建产物
+node_modules/
+src-tauri/target/
+src-tauri/gen/
+*.pdb
+
+# 旧版 .NET 构建产物（历史分支仍可能使用）
 bin/
 obj/
 publish/

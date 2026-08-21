@@ -1,21 +1,58 @@
 name: CI
 
-# 每次推送 / PR 做编译检查（与 Release 分开，参考 Metrik 的 ci.yml + release.yml 分工）。
-# 注意：--smoke 冒烟测试需要本机 codex 登录态，CI 环境无法运行，仅在本地执行。
 on:
   push:
-    branches: [main, master]
+    branches: [main, "codex/**"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  test:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: 8.0.x
+          node-version: 22
+          cache: npm
 
-      - name: Build
-        run: dotnet build MetrikLite.csproj -c Release
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend tooling
+        run: npm ci
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+
+      - name: Validate frontend JavaScript
+        run: node --check src/main.js
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+
+      - name: Run Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Audit Rust dependencies
+        run: cargo audit --file src-tauri/Cargo.lock

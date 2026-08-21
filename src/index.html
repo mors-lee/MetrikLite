@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>MetrikLite</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="panel" aria-label="MetrikLite Codex 配额">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">ML</div>
+          <div>
+            <h1>MetrikLite</h1>
+            <p id="status-line"><span class="status-dot"></span><span>正在连接 Codex…</span></p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="refresh-button" class="icon-button" type="button" title="立即刷新" aria-label="立即刷新">↻</button>
+          <button id="settings-button" class="icon-button" type="button" title="设置" aria-label="设置">⋯</button>
+        </div>
+      </header>
+
+      <section id="quota-content" class="quota-content" aria-live="polite">
+        <article class="quota-card" data-window="primary">
+          <div class="card-heading">
+            <div>
+              <span class="eyebrow">短时窗口</span>
+              <strong id="primary-percent">—</strong>
+            </div>
+            <span class="window-chip">5 小时</span>
+          </div>
+          <div class="meter"><span id="primary-meter"></span></div>
+          <p id="primary-reset" class="reset-line">等待 Codex 返回数据</p>
+        </article>
+
+        <article class="quota-card" data-window="secondary">
+          <div class="card-heading">
+            <div>
+              <span class="eyebrow">每周窗口</span>
+              <strong id="secondary-percent">—</strong>
+            </div>
+            <span class="window-chip">7 天</span>
+          </div>
+          <div class="meter"><span id="secondary-meter"></span></div>
+          <p id="secondary-reset" class="reset-line">等待 Codex 返回数据</p>
+        </article>
+      </section>
+
+      <section id="empty-state" class="empty-state hidden">
+        <div class="empty-symbol">!</div>
+        <h2>暂时无法读取 Codex 配额</h2>
+        <p id="empty-message">请确认已安装并登录独立 Codex CLI。</p>
+        <button id="empty-settings-button" class="primary-button" type="button">设置 Codex 路径</button>
+      </section>
+
+      <footer>
+        <span id="updated-at">尚未刷新</span>
+        <span>数据仅在本机读取</span>
+      </footer>
+
+      <section id="settings-sheet" class="settings-sheet hidden" aria-label="设置">
+        <div class="sheet-heading">
+          <div>
+            <span class="eyebrow">偏好设置</span>
+            <h2>让托盘按你的方式工作</h2>
+          </div>
+          <button id="close-settings-button" class="icon-button" type="button" aria-label="关闭设置">×</button>
+        </div>
+
+        <label class="field-label" for="codex-path">Codex CLI 路径</label>
+        <div class="path-row">
+          <input id="codex-path" type="text" placeholder="自动查找，或选择 codex.exe / codex.cmd" spellcheck="false" />
+          <button id="browse-button" class="secondary-button" type="button">选择</button>
+        </div>
+
+        <label class="field-label" for="refresh-seconds">刷新间隔</label>
+        <div class="range-row">
+          <input id="refresh-seconds" type="range" min="10" max="300" step="10" value="30" />
+          <output id="refresh-output">30 秒</output>
+        </div>
+
+        <label class="toggle-row">
+          <span><strong>浅色托盘数字</strong><small>适合深色任务栏</small></span>
+          <input id="light-glyphs" type="checkbox" />
+          <i aria-hidden="true"></i>
+        </label>
+
+        <label class="toggle-row">
+          <span><strong>开机自动启动</strong><small>登录 Windows 后常驻托盘</small></span>
+          <input id="autostart" type="checkbox" />
+          <i aria-hidden="true"></i>
+        </label>
+
+        <div class="sheet-actions">
+          <button id="check-update-button" class="secondary-button" type="button">检查更新</button>
+          <button id="save-settings-button" class="primary-button" type="button">保存设置</button>
+        </div>
+
+        <p class="privacy-note">只读取本机 Codex app-server 返回的配额窗口；不读取对话正文、项目文件、GitHub Token 或浏览器数据。</p>
+      </section>
+
+      <div id="toast" class="toast hidden" role="status"></div>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

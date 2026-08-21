@@ -1,0 +1,39 @@
+[package]
+name = "metriklite"
+version = "2.0.0"
+description = "Local-first Codex quota monitor for the Windows notification area"
+authors = ["Mors Lee"]
+edition = "2021"
+license = "MIT"
+rust-version = "1.77.2"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+ab_glyph = "0.2"
+anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+dirs = "6"
+open = "5"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-single-instance = "2"
+tokio = { version = "1", features = ["io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_WindowsAndMessaging",
+] }
+winreg = "0.55"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
