@@ -1,8 +1,5 @@
 name: Release
 
-# 推送 v* 标签时构建便携版、安装包并自动发布 Release。
-# （借鉴 Metrik 的发布方式：本地不装任何打包工具，全部在云端完成。）
-# 触发示例：git tag v1.0.0 && git push origin v1.0.0
 on:
   push:
     tags: ["v*"]
@@ -11,57 +8,78 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  release-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: 8.0.x
+          node-version: 22
+          cache: npm
 
-      # 与本地发布命令保持一致：自包含 + 单文件 + 压缩。
-      # 目标机器无需安装 .NET 运行时，双击即用。
-      - name: Publish self-contained exe
-        run: dotnet publish MetrikLite.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
+      - uses: dtolnay/rust-toolchain@stable
 
-      # GitHub Runner 不保证预装 Inno Setup，使用 winget 安装后构建安装向导。
-      - name: Install Inno Setup
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install frontend tooling
+        run: npm ci
+
+      - name: Verify version matches tag
         shell: pwsh
         run: |
-          winget install --id JRSoftware.InnoSetup --exact --silent --accept-source-agreements --accept-package-agreements
-          $candidates = @(
-            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
-          )
-          $iscc = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-          if (-not $iscc) { throw "ISCC.exe not found after installing Inno Setup." }
-          Add-Content -Path $env:GITHUB_PATH -Value (Split-Path -Parent $iscc)
-
-      - name: Verify installer language file
-        shell: pwsh
-        run: |
-          $expected = "6753be2c5e2740d859900fd902824db2ec568da5c5b52486524c9762d778b0b0"
-          $actual = (Get-FileHash installer\Languages\ChineseSimplified.isl -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) {
-            throw "ChineseSimplified.isl checksum mismatch: $actual"
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          $configVersion = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $cargoVersion = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "([^"]+)"$').Matches[0].Groups[1].Value
+          if ($tagVersion -ne $configVersion -or $tagVersion -ne $cargoVersion) {
+            throw "Tag ($tagVersion), tauri.conf.json ($configVersion), and Cargo.toml ($cargoVersion) must match."
           }
 
-      - name: Build installer
-        run: ISCC installer\MetrikLite.iss
+      - name: Generate source SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: MetrikLite-SBOM.spdx.json
 
-      # 便携版：单文件 exe 直接打成 zip，免安装使用
-      - name: Zip portable
+      - name: Build installers and create GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: MetrikLite ${{ github.ref_name }}
+          releaseBody: |
+            Windows installers and portable executable are built automatically from this public source tag.
+            Verify downloads with SHA256SUMS.txt. The SBOM lists packaged dependencies.
+          releaseDraft: false
+          prerelease: false
+          args: --bundles nsis,msi
+
+      - name: Prepare portable executable and SHA256
         shell: pwsh
-        run: Compress-Archive -Path publish\MetrikLite.exe -DestinationPath MetrikLite-portable-win-x64.zip
+        run: |
+          Copy-Item src-tauri/target/release/metriklite.exe MetrikLite-portable.exe
+          $artifacts = @(
+            Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe,*.msi
+            Get-Item MetrikLite-portable.exe
+            Get-Item MetrikLite-SBOM.spdx.json
+          )
+          $lines = $artifacts | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          }
+          Set-Content -Path SHA256SUMS.txt -Value $lines -Encoding utf8NoBOM
+          Get-Content SHA256SUMS.txt
 
-      # Release：同时提供安装包、单文件 EXE 和便携版 ZIP。
-      - name: Create release
+      - name: Upload portable executable, checksums, and SBOM
         uses: softprops/action-gh-release@v2
         with:
-          draft: false
-          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
           files: |
-            installer/Output/MetrikLite-Setup.exe
-            publish/MetrikLite.exe
-            MetrikLite-portable-win-x64.zip
+            MetrikLite-portable.exe
+            SHA256SUMS.txt
+            MetrikLite-SBOM.spdx.json
+          fail_on_unmatched_files: true
