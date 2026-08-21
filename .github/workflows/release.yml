@@ -44,6 +44,60 @@ jobs:
           format: spdx-json
           output-file: MetrikLite-SBOM.spdx.json
 
+      - name: Import Authenticode certificate
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE)) {
+            throw "WINDOWS_CERTIFICATE GitHub Secret is required for a signed release."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
+            throw "WINDOWS_CERTIFICATE_PASSWORD GitHub Secret is required for a signed release."
+          }
+
+          $pfxPath = Join-Path $env:RUNNER_TEMP "metriklite-signing.pfx"
+          [System.IO.File]::WriteAllBytes(
+            $pfxPath,
+            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          )
+
+          $password = ConvertTo-SecureString `
+            $env:WINDOWS_CERTIFICATE_PASSWORD `
+            -AsPlainText `
+            -Force
+          $imported = Import-PfxCertificate `
+            -FilePath $pfxPath `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Password $password
+          Remove-Item -LiteralPath $pfxPath -Force
+
+          $certificate = $imported |
+            Where-Object { $_.HasPrivateKey } |
+            Select-Object -First 1
+          if (-not $certificate) {
+            throw "The imported PFX does not contain a private key."
+          }
+
+          $thumbprint = ($certificate.Thumbprint -replace '\s', '').ToUpperInvariant()
+          $signingConfig = [ordered]@{
+            '$schema' = 'https://schema.tauri.app/config/2'
+            bundle = [ordered]@{
+              windows = [ordered]@{
+                certificateThumbprint = $thumbprint
+                digestAlgorithm = 'sha256'
+                timestampUrl = 'http://timestamp.digicert.com'
+              }
+            }
+          } | ConvertTo-Json -Depth 6
+
+          Set-Content `
+            -LiteralPath src-tauri/tauri.windows.conf.json `
+            -Value $signingConfig `
+            -Encoding utf8NoBOM
+          Write-Host "Imported Authenticode certificate $thumbprint and prepared Tauri signing config."
+
       - name: Build installers and create GitHub Release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -52,16 +106,37 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: MetrikLite ${{ github.ref_name }}
           releaseBody: |
-            Windows installers and portable executable are built automatically from this public source tag.
-            Verify downloads with SHA256SUMS.txt. The SBOM lists packaged dependencies.
-          releaseDraft: false
+            Windows installers and portable executable are built automatically from this public source tag and Authenticode-signed.
+            Verify signatures and downloads with SHA256SUMS.txt. The SBOM lists packaged dependencies.
+          releaseDraft: true
           prerelease: false
           args: --bundles nsis,msi
 
-      - name: Prepare portable executable and SHA256
+      - name: Verify Authenticode signatures and prepare portable executable
         shell: pwsh
         run: |
+          $files = @(
+            (Get-Item -LiteralPath "src-tauri/target/release/metriklite.exe")
+            (Get-ChildItem -LiteralPath "src-tauri/target/release/bundle" -Recurse -File -Include *.exe,*.msi)
+          ) | Sort-Object FullName -Unique
+
+          if ($files.Count -eq 0) {
+            throw "No Windows release files were produced."
+          }
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if ($signature.Status -ne 'Valid') {
+              throw "Authenticode verification failed for $($file.FullName): $($signature.Status) $($signature.StatusMessage)"
+            }
+            Write-Host "Verified Authenticode signature: $($file.FullName)"
+          }
+
           Copy-Item src-tauri/target/release/metriklite.exe MetrikLite-portable.exe
+          $portableSignature = Get-AuthenticodeSignature -LiteralPath MetrikLite-portable.exe
+          if ($portableSignature.Status -ne 'Valid') {
+            throw "Authenticode verification failed for MetrikLite-portable.exe: $($portableSignature.Status) $($portableSignature.StatusMessage)"
+          }
+
           $artifacts = @(
             Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe,*.msi
             Get-Item MetrikLite-portable.exe
@@ -74,12 +149,19 @@ jobs:
           Set-Content -Path SHA256SUMS.txt -Value $lines -Encoding utf8NoBOM
           Get-Content SHA256SUMS.txt
 
-      - name: Upload portable executable, checksums, and SBOM
+      - name: Upload verified portable executable, checksums, and SBOM
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
+          draft: true
           files: |
             MetrikLite-portable.exe
             SHA256SUMS.txt
             MetrikLite-SBOM.spdx.json
           fail_on_unmatched_files: true
+
+      - name: Publish verified Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ github.ref_name }}" --draft=false

@@ -2,6 +2,7 @@
 node_modules/
 src-tauri/target/
 src-tauri/gen/
+src-tauri/tauri.windows.conf.json
 *.pdb
 
 # 旧版 .NET 构建产物（历史分支仍可能使用）

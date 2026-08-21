@@ -2120,7 +2120,7 @@ dependencies = [
 
 [[package]]
 name = "metriklite"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "ab_glyph",
  "anyhow",

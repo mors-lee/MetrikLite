@@ -40,7 +40,7 @@ MetrikLite renders the Codex **weekly remaining percentage** as a numeric Window
 
 ## Download
 
-[Download the MetrikLite v2.0.1 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.1/MetrikLite_2.0.1_x64-setup.exe)
+[Download the MetrikLite v2.0.2 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.2/MetrikLite_2.0.2_x64-setup.exe)
 
 The [latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) contains:
 
