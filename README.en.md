@@ -40,7 +40,7 @@ MetrikLite renders the Codex **weekly remaining percentage** as a numeric Window
 
 ## Download
 
-[Download the MetrikLite v2.0.2 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.2/MetrikLite_2.0.2_x64-setup.exe)
+[Download the MetrikLite v2.0.3 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.3/MetrikLite_2.0.3_x64-setup.exe)
 
 The [latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) contains:
 
@@ -129,7 +129,7 @@ cargo clippy --manifest-path src-tauri\Cargo.toml --locked --all-targets -- -D w
 
 ## Release security
 
-Every official Release is built from a public `v*` tag by GitHub Actions. The workflow publishes NSIS and MSI installers, a portable executable, SHA256 checksums, and an SPDX SBOM. Dependabot, CodeQL, `cargo audit`, and `npm audit` are enabled. See [SECURITY.md](SECURITY.md).
+Every official Release is built from a public `v*` tag by GitHub Actions. Current Windows packages are not Authenticode-signed, so Windows may show **Unknown publisher**. The workflow publishes NSIS and MSI installers, a portable executable, SHA256 checksums, and an SPDX SBOM. Dependabot, CodeQL, `cargo audit`, and `npm audit` are enabled. See [SECURITY.md](SECURITY.md).
 
 ## License and attribution
 

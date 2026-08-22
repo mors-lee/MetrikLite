@@ -32,7 +32,7 @@
 
 ### 推荐：NSIS 安装向导
 
-> **[立即下载 MetrikLite v2.0.2](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.2/MetrikLite_2.0.2_x64-setup.exe)**
+> **[立即下载 MetrikLite v2.0.3](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.3/MetrikLite_2.0.3_x64-setup.exe)**
 
 也可以前往 [Latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) 获取当前最新版：
 
@@ -236,23 +236,14 @@ cargo clippy --manifest-path src-tauri\Cargo.toml --locked --all-targets -- -D w
 
 ## 自动构建与供应链
 
-正式 Release 由 GitHub Actions 从公开的 `v*` 标签自动构建，并在发布前完成 Windows Authenticode 签名验证：
+正式 Release 由 GitHub Actions 从公开的 `v*` 标签自动构建：
 
 1. 校验 Git 标签、`tauri.conf.json` 和 `Cargo.toml` 中的版本一致。
-2. 从 GitHub Secrets 导入代码签名 PFX，仅在 Release Runner 中使用。
-3. 动态生成 `tauri.windows.conf.json`，由 Tauri 调用 Windows SDK `signtool`。
-4. 构建并验证 `metriklite.exe`、NSIS、MSI 和便携版 EXE 的 Authenticode 签名。
-5. 生成 SPDX JSON SBOM 和 `SHA256SUMS.txt`。
-6. 只有全部验证通过后，Draft Release 才会公开发布。
+2. 构建 `metriklite.exe`、NSIS、MSI 和便携版 EXE。当前公开版本不配置 Authenticode 商业代码签名证书，Windows 可能显示“未知发布者”。
+3. 生成 SPDX JSON SBOM 和 `SHA256SUMS.txt`。
+4. 只有构建和校验步骤通过后，Draft Release 才会公开发布。
 
-维护者需要在仓库的 Actions Secrets 中配置：
-
-```text
-WINDOWS_CERTIFICATE              # Base64 编码的代码签名 .pfx
-WINDOWS_CERTIFICATE_PASSWORD     # PFX 导出密码
-```
-
-PFX 文件、密码和私钥不得进入 Git。证书配置示例见 [`src-tauri/tauri.windows.conf.example.json`](src-tauri/tauri.windows.conf.example.json)。当前项目只启用 Authenticode；MetrikLite 尚未启用 Tauri 自动更新，因此不配置 `TAURI_SIGNING_PRIVATE_KEY`。
+当前版本不需要配置代码签名证书或 `TAURI_SIGNING_PRIVATE_KEY`。如果未来启用 Authenticode，可参考 [`src-tauri/tauri.windows.conf.example.json`](src-tauri/tauri.windows.conf.example.json) 调整发布流程。
 
 仓库同时启用了 Dependabot、CodeQL、`cargo audit` 和 `npm audit`。漏洞报告方式见 [SECURITY.md](SECURITY.md)。
 
