@@ -87,7 +87,7 @@ jobs:
           Get-Content SHA256SUMS.txt
 
       - name: Upload portable executable, checksums, and SBOM
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           draft: true
