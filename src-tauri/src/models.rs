@@ -38,10 +38,12 @@ impl AppPayload {
     pub fn ready(mut windows: Vec<QuotaWindow>) -> Self {
         windows.sort_by_key(|item| if item.window_key == "primary" { 0 } else { 1 });
         let now = chrono::Utc::now().timestamp_millis();
+        // 托盘数字固定显示短时窗口（Codex 当前为 5 小时窗口），
+        // 每周窗口通过悬停提示和主面板查看。
         let tray_percent = windows
             .iter()
             .find(|item| {
-                item.window_key == "secondary"
+                item.window_key == "primary"
                     && item.resets_at_ms.map(|reset| reset > now).unwrap_or(true)
             })
             .map(|item| item.remaining_percent.round().clamp(0.0, 100.0) as i32);
@@ -87,8 +89,8 @@ mod tests {
     }
 
     #[test]
-    fn tray_uses_weekly_window_only() {
+    fn tray_uses_five_hour_window_only() {
         let payload = AppPayload::ready(vec![window("primary", 8.0), window("secondary", 63.0)]);
-        assert_eq!(payload.tray_percent, Some(63));
+        assert_eq!(payload.tray_percent, Some(8));
     }
 }

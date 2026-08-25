@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>See your Codex weekly quota and reset time directly in the Windows tray.</strong><br />
+  <strong>See your Codex 5-hour and weekly quota directly in the Windows tray.</strong><br />
   Lightweight, native, and local-first. It does not read conversations or project files.
 </p>
 
@@ -26,21 +26,21 @@
 
 ## At a glance
 
-MetrikLite renders the Codex **weekly remaining percentage** as a numeric Windows notification-area icon. Hover over the number to see its reset time, or left-click for a compact panel above the taskbar.
+MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Windows notification-area icon. Hover over the number to see both quota windows and reset times, or left-click for a panel above the taskbar.
 
 - Auto-scaled, optically centered values from `0` to `100`.
 - Two-line hover text with remaining percentage and reset date.
-- Compact weekly-quota panel anchored to the active monitor work area.
+- Panel showing both the 5-hour and weekly quota windows, anchored to the active monitor work area.
 - Multi-monitor and high-DPI aware positioning with complete rounded corners.
 - One persistent local Codex app-server session reused across refreshes.
 - Current-user autostart, manual refresh, CLI selection, and update checks.
 - Rust + Tauri 2; the official NSIS installer is approximately 1.3 MB.
 
-> Starting with v2.0.1, the main panel and tray icon use only the Codex weekly window. The short window is not displayed.
+> Starting with v2.0.4, the tray number uses the 5-hour window, while the main panel and hover text show both the 5-hour and weekly windows.
 
 ## Download
 
-[Download the MetrikLite v2.0.3 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.3/MetrikLite_2.0.3_x64-setup.exe)
+[Download the MetrikLite v2.0.4 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.4/MetrikLite_2.0.4_x64-setup.exe)
 
 The [latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) contains:
 
@@ -57,8 +57,8 @@ Windows 10/11 x64 is supported. If Microsoft Edge WebView2 Runtime is missing, t
 ## First run
 
 1. Install and launch MetrikLite.
-2. If an independent Codex CLI is installed and signed in, the tray shows the weekly remaining percentage.
-3. Left-click the number for details; right-click for refresh, settings, updates, downloads, and exit.
+2. If an independent Codex CLI is installed and signed in, the tray shows the 5-hour remaining percentage.
+3. Hover over the number for both windows; left-click for the dual-window panel; right-click for refresh, settings, updates, downloads, and exit.
 4. If Codex is not detected, choose `codex.exe`, `codex.cmd`, or `codex.bat` in Settings.
 
 If Codex is unavailable, MetrikLite stays accessible with a `!` tray icon and an actionable settings screen instead of silently disappearing.
@@ -77,11 +77,11 @@ No single signal—including a code signature or a VirusTotal `0/70` result—pr
 
 | Display | Meaning |
 | --- | --- |
-| `0`–`100` | Codex weekly remaining percentage |
+| `0`–`100` | Codex 5-hour remaining percentage |
 | Red value | No more than 20% remains |
 | `!` | Codex quota is temporarily unavailable |
 
-Hover text is shown on two lines: `Codex remaining xx%` and `Reset MM-DD HH:MM`.
+Hover text shows the 5-hour and weekly remaining percentages with their reset times.
 
 The default refresh interval is 30 seconds and can be configured from 10 to 300 seconds. Local files are stored under:
 
@@ -97,7 +97,7 @@ MetrikLite checks `CODEX_BINARY`, the configured path, official `OpenAI.Codex_*`
 
 ## Privacy and network access
 
-MetrikLite reads only its own local configuration, a Codex CLI path, weekly quota data returned by Codex app-server, and Segoe UI font data used to render the tray number.
+MetrikLite reads only its own local configuration, a Codex CLI path, quota data returned by Codex app-server, and Segoe UI font data used to render the tray number.
 
 It does **not** read Codex conversations, prompts, responses, project files, repositories, clipboard data, browser data, GitHub credentials, or Codex credential-file contents. MetrikLite never reads sensitive credentials, so no credential-access switch is required; Codex CLI owns authentication.
 

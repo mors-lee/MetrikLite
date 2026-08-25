@@ -99,7 +99,7 @@ fn set_panel_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
-    let height = if expanded { 470.0 } else { 300.0 };
+    let height = if expanded { 470.0 } else { 390.0 };
     window
         .set_size(Size::Logical(LogicalSize::new(380.0, height)))
         .map_err(|error| error.to_string())?;
@@ -151,25 +151,41 @@ fn update_tray(app: &AppHandle, payload: &AppPayload, light_glyphs: bool) {
 }
 
 fn tray_tooltip(payload: &AppPayload) -> String {
-    let Some(percent) = payload.tray_percent else {
-        return "MetrikLite：点击查看并设置 Codex CLI".into();
-    };
-    let reset = payload
+    let primary = payload
         .windows
         .iter()
-        .find(|window| window.window_key == "secondary")
-        .and_then(|window| window.resets_at_ms)
+        .find(|window| window.window_key == "primary");
+    let secondary = payload
+        .windows
+        .iter()
+        .find(|window| window.window_key == "secondary");
+
+    if primary.is_none() && secondary.is_none() {
+        return "MetrikLite：点击查看并设置 Codex CLI".into();
+    }
+
+    let mut lines = vec!["剩余用量".to_string()];
+    lines.push(format_tray_window("5 小时", primary));
+    lines.push(format_tray_window("1 周", secondary));
+    lines.join("\n")
+}
+
+fn format_tray_window(label: &str, window: Option<&models::QuotaWindow>) -> String {
+    let Some(window) = window else {
+        return format!("{label}：暂无数据");
+    };
+    let percent = window.remaining_percent.round().clamp(0.0, 100.0) as i32;
+    let reset = window
+        .resets_at_ms
         .and_then(chrono::DateTime::<chrono::Utc>::from_timestamp_millis)
         .map(|timestamp| {
             timestamp
                 .with_timezone(&chrono::Local)
                 .format("%m-%d %H:%M")
                 .to_string()
-        });
-    match reset {
-        Some(reset) => format!("Codex 剩余 {percent}%\n重置 {reset}"),
-        None => format!("Codex 剩余 {percent}%\n重置时间暂未提供"),
-    }
+        })
+        .unwrap_or_else(|| "重置时间未知".into());
+    format!("{label}：{percent}% · 重置 {reset}")
 }
 
 fn show_panel(app: &AppHandle, position: Option<(f64, f64)>) {
@@ -338,17 +354,30 @@ mod tests {
     use crate::models::{AppPayload, QuotaWindow};
 
     #[test]
-    fn tooltip_has_percentage_and_reset_on_separate_lines() {
-        let payload = AppPayload::ready(vec![QuotaWindow {
-            adapter_id: "codex".into(),
-            window_key: "secondary".into(),
-            remaining_percent: 42.0,
-            resets_at_ms: Some(1_900_000_000_000),
-            collected_at_ms: 1_800_000_000_000,
-            quality: "official_live".into(),
-            source_label: "Codex app-server".into(),
-        }]);
+    fn tooltip_shows_five_hour_and_weekly_windows() {
+        let payload = AppPayload::ready(vec![
+            QuotaWindow {
+                adapter_id: "codex".into(),
+                window_key: "primary".into(),
+                remaining_percent: 42.0,
+                resets_at_ms: Some(1_900_000_000_000),
+                collected_at_ms: 1_800_000_000_000,
+                quality: "official_live".into(),
+                source_label: "Codex app-server".into(),
+            },
+            QuotaWindow {
+                adapter_id: "codex".into(),
+                window_key: "secondary".into(),
+                remaining_percent: 88.0,
+                resets_at_ms: Some(1_900_000_000_000),
+                collected_at_ms: 1_800_000_000_000,
+                quality: "official_live".into(),
+                source_label: "Codex app-server".into(),
+            },
+        ]);
         let tooltip = tray_tooltip(&payload);
-        assert!(tooltip.starts_with("Codex 剩余 42%\n重置 "));
+        assert!(tooltip.contains("剩余用量"));
+        assert!(tooltip.contains("5 小时：42%"));
+        assert!(tooltip.contains("1 周：88%"));
     }
 }

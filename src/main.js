@@ -18,6 +18,21 @@ const elements = {
   toast: $("#toast"),
 };
 
+const quotaElements = {
+  primary: {
+    card: document.querySelector('[data-window="primary"]'),
+    percent: $("#primary-percent"),
+    meter: $("#primary-meter"),
+    reset: $("#primary-reset"),
+  },
+  secondary: {
+    card: document.querySelector('[data-window="secondary"]'),
+    percent: $("#secondary-percent"),
+    meter: $("#secondary-meter"),
+    reset: $("#secondary-reset"),
+  },
+};
+
 let appState = null;
 let config = null;
 let toastTimer = null;
@@ -43,29 +58,30 @@ function formatReset(timestamp) {
   return `重置：${absolute} · ${relative}`;
 }
 
-function setWeeklyWindow(quota) {
-  const percent = $("#secondary-percent");
-  const meter = $("#secondary-meter");
-  const reset = $("#secondary-reset");
+function setQuotaWindow(key, quota) {
+  const target = quotaElements[key];
+  target.card.classList.toggle("hidden", !quota);
   if (!quota) return;
   const remaining = Math.max(0, Math.min(100, quota.remaining_percent));
-  percent.textContent = formatPercent(remaining);
-  meter.style.width = `${remaining}%`;
-  meter.classList.toggle("low", remaining <= 20);
-  reset.textContent = formatReset(quota.resets_at_ms);
+  target.percent.textContent = formatPercent(remaining);
+  target.meter.style.width = `${remaining}%`;
+  target.meter.classList.toggle("low", remaining <= 20);
+  target.reset.textContent = formatReset(quota.resets_at_ms);
 }
 
 function renderState(state) {
   appState = state;
   const dotClass = state.status === "ready" ? "live" : state.status === "error" ? "error" : "";
   elements.status.innerHTML = `<span class="status-dot ${dotClass}"></span><span>${state.status_text}</span>`;
+  const primary = state.windows.find((item) => item.window_key === "primary");
   const secondary = state.windows.find((item) => item.window_key === "secondary");
-  setWeeklyWindow(secondary);
-  const hasQuota = Boolean(secondary);
+  setQuotaWindow("primary", primary);
+  setQuotaWindow("secondary", secondary);
+  const hasQuota = Boolean(primary || secondary);
   elements.content.classList.toggle("hidden", !hasQuota);
   elements.empty.classList.toggle("hidden", hasQuota);
   elements.emptyMessage.textContent = state.error_message
-    || (state.status === "ready" ? "Codex 当前未提供每周配额。" : "请确认已安装并登录独立 Codex CLI。");
+    || (state.status === "ready" ? "Codex 当前未提供可用配额窗口。" : "请确认已安装并登录独立 Codex CLI。");
   elements.updatedAt.textContent = state.refreshed_at_ms
     ? `更新于 ${new Date(state.refreshed_at_ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`
     : "尚未刷新";

@@ -5,7 +5,7 @@
 
   <h1>MetrikLite</h1>
 
-  <strong>把 Codex 每周配额放进 Windows 托盘。</strong><br>
+  <strong>把 Codex 5 小时与每周配额放进 Windows 托盘。</strong><br>
   轻量、原生、本地优先：不用打开 Codex，也能随时看到剩余百分比与重置时间。
 
   <p>
@@ -25,14 +25,14 @@
   </p>
 
   <br>
-  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 每周配额面板">
+  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 5 小时与每周配额面板">
 </div>
 
 ## 快速开始：下载并安装
 
 ### 推荐：NSIS 安装向导
 
-> **[立即下载 MetrikLite v2.0.3](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.3/MetrikLite_2.0.3_x64-setup.exe)**
+> **[立即下载 MetrikLite v2.0.4](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.4/MetrikLite_2.0.4_x64-setup.exe)**
 
 也可以前往 [Latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) 获取当前最新版：
 
@@ -50,9 +50,9 @@
 
 1. 下载上方的 `MetrikLite_*_x64-setup.exe` 并运行安装向导。
 2. 启动 MetrikLite，确认本机已经安装并登录独立 Codex CLI。
-3. 查看 Windows 托盘数字；左键点击数字打开配额面板，右键点击打开功能菜单。
+3. 查看 Windows 托盘数字（显示 5 小时窗口剩余百分比）；左键点击数字打开同时显示 5 小时和 1 周窗口的配额面板，右键点击打开功能菜单。
 4. 如果没有自动识别 Codex，进入“设置”并选择 `codex.exe`、`codex.cmd` 或 `codex.bat`。
-5. 保存设置后点击“立即刷新”，即可读取每周配额。
+5. 保存设置后点击“立即刷新”，即可读取 5 小时和 1 周配额。
 
 ### 关于 Windows 的“未知发布者”提示
 
@@ -69,9 +69,9 @@
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="./docs/images/quota-panel.png" width="430" alt="每周配额面板">
-      <br><strong>每周配额面板</strong><br>
-      显示剩余百分比、进度条和重置倒计时。
+       <img src="./docs/images/quota-panel.png" width="430" alt="5 小时与每周配额面板">
+       <br><strong>5 小时与每周配额面板</strong><br>
+       同时显示两个窗口的剩余百分比、进度条和重置倒计时。
     </td>
     <td width="50%" align="center">
       <img src="./docs/images/settings-panel.png" width="290" alt="偏好设置面板">
@@ -83,19 +83,19 @@
     <td colspan="2" align="center">
       <img src="./docs/images/tray-quota.png" width="520" alt="Windows 托盘配额显示">
       <br><strong>Windows 托盘显示</strong><br>
-      托盘数字显示每周剩余百分比，悬停可查看重置时间。
+       托盘数字显示 5 小时剩余百分比，悬停可查看 5 小时与 1 周用量及重置时间。
     </td>
   </tr>
 </table>
 
 ## MetrikLite 是什么？
 
-查看 Codex 配额通常意味着打开另一个窗口、找到对应页面，再确认下一次重置时间。MetrikLite 常驻 Windows 通知区域，把最需要的一项信息直接变成托盘数字：**当前每周窗口还剩多少百分比**。
+查看 Codex 配额通常意味着打开另一个窗口、找到对应页面，再确认下一次重置时间。MetrikLite 常驻 Windows 通知区域，把最需要的一项信息直接变成托盘数字：**当前 5 小时窗口还剩多少百分比**。
 
 | 日常问题 | MetrikLite 的处理方式 |
 | --- | --- |
-| 想看配额，却要先打开 Codex | 托盘数字持续显示每周剩余百分比，鼠标悬停即可查看重置时间 |
-| 每周窗口和短时窗口容易混淆 | v2.0.1 起，托盘与主面板统一使用 Codex 每周窗口 |
+| 想看配额，却要先打开 Codex | 托盘数字持续显示 5 小时剩余百分比，鼠标悬停即可查看 5 小时和 1 周用量 |
+| 需要同时掌握短时和每周窗口 | v2.0.4 起，托盘显示 5 小时窗口，主面板和悬停提示同时显示两个窗口 |
 | 托盘数字太小、不同位数难辨认 | `0`–`100` 自动缩放并居中，剩余不高于 20% 时显示红色 |
 | 不同电脑上的 Codex 路径不一致 | 自动查找 CLI，也可以在设置中指定 `codex.exe`、`codex.cmd` 或 `codex.bat` |
 | 面板经常挡住任务栏或跑到错误的屏幕 | 面板按当前鼠标所在显示器的工作区定位，支持多显示器和高 DPI |
@@ -109,8 +109,8 @@ flowchart LR
     B --> C["查找 Codex CLI<br/>环境变量 · 设置 · WinGet · npm · PATH"]
     C --> D["本机 codex app-server<br/>JSON-RPC stdout"]
     D --> E["account/rateLimits/read"]
-    E --> F["每周配额 · 重置时间"]
-    F --> G["托盘数字 · 紧凑配额面板"]
+    E --> F["5 小时配额 · 每周配额 · 重置时间"]
+    F --> G["托盘数字 · 双窗口配额面板"]
     B -.-> H["用户主动检查更新<br/>api.github.com"]
 ```
 
@@ -118,18 +118,18 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 
 ## 核心能力
 
-### 托盘数字，一眼知道还剩多少
+### 托盘数字，一眼知道 5 小时窗口还剩多少
 
-- 显示 Codex 每周窗口的 `0`–`100` 剩余百分比。
+- 显示 Codex 5 小时窗口的 `0`–`100` 剩余百分比。
 - 单位数、两位数和三位数会自动缩放，保持在 32×32 托盘画布中清晰居中。
 - 剩余百分比不高于 20% 时使用红色提醒。
 - 暂时无法读取配额时显示 `!`，悬停提示会说明当前状态。
-- 鼠标悬停显示“Codex 剩余 xx%”与“重置 MM-DD HH:MM”。
+- 鼠标悬停同时显示 5 小时和 1 周剩余百分比及各自的重置时间。
 
-### 紧凑面板，查看完整周窗口
+### 双窗口面板，同时查看 5 小时与 1 周
 
 - 左键点击托盘数字，显示或隐藏配额面板。
-- 面板展示剩余百分比、进度条、绝对重置时间和相对倒计时。
+- 面板同时展示 5 小时和 1 周窗口的剩余百分比、进度条、绝对重置时间和相对倒计时。
 - 右键菜单提供显示配额、立即刷新、设置、检查更新、打开下载页面和退出。
 - 面板锚定当前显示器工作区右下角，尽量避开任务栏；空间不足时回退到工作区左上角。
 - 支持常规 Windows 缩放、多显示器和高 DPI 环境。
@@ -185,7 +185,7 @@ HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MetrikLite
 
 - MetrikLite 自己的本地配置和日志目录。
 - 用户指定或自动找到的 Codex CLI 文件路径。
-- Codex app-server 返回的每周配额百分比、窗口时长和重置时间。
+- Codex app-server 返回的 5 小时和 1 周配额百分比、窗口时长和重置时间。
 - Windows 字体目录中的 Segoe UI Semibold/Bold，仅用于渲染托盘数字。
 
 ### MetrikLite 不会读取
@@ -253,7 +253,7 @@ cargo clippy --manifest-path src-tauri\Cargo.toml --locked --all-targets -- -D w
 src/                         无框架 HTML/CSS/JavaScript 面板
 src-tauri/src/main.rs        Tauri 生命周期、托盘菜单与前端命令
 src-tauri/src/codex.rs       持久 Codex JSON-RPC 会话与配额读取
-src-tauri/src/models.rs      配额状态与每周托盘选择逻辑
+src-tauri/src/models.rs      配额状态与 5 小时托盘选择逻辑
 src-tauri/src/tray_icon.rs   数字渲染、缩放与面板定位
 src-tauri/src/config.rs      配置持久化与当前用户开机自启
 src-tauri/tauri.conf.json    窗口、权限及 NSIS/MSI 打包配置
