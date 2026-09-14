@@ -13,6 +13,8 @@ pub struct AppConfig {
     pub light_glyphs: bool,
     #[serde(alias = "AutoStart")]
     pub autostart: bool,
+    #[serde(alias = "Theme")]
+    pub theme: String,
 }
 
 impl Default for AppConfig {
@@ -22,6 +24,7 @@ impl Default for AppConfig {
             refresh_seconds: 30,
             light_glyphs: false,
             autostart: false,
+            theme: "light".into(),
         }
     }
 }
@@ -33,6 +36,9 @@ impl AppConfig {
         // config files can still be deserialized without a migration step.
         self.codex_binary_path = None;
         self.light_glyphs = false;
+        if self.theme != "dark" {
+            self.theme = "light".into();
+        }
         self
     }
 }

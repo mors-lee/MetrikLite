@@ -25,7 +25,8 @@
   </p>
 
   <br>
-  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 主面板：5 小时与 1 周配额及偏好设置">
+  <img src="./docs/images/quota-panel.png" width="360" alt="MetrikLite 主面板浅色外观">
+  <img src="./docs/images/quota-panel-dark.png" width="360" alt="MetrikLite 主面板深色外观">
 </div>
 
 ## 快速开始：下载并安装
@@ -66,9 +67,8 @@
 ## 界面预览
 
 <p align="center">
-  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 主面板：5 小时与 1 周配额及偏好设置">
-  <br><strong>主面板：双窗口配额与内嵌偏好设置</strong><br>
-  当前版本将 5 小时、1 周配额、重置时间、刷新间隔和开机自启放在同一页；不再使用独立设置窗口。
+  <strong>主面板：双窗口配额与内嵌偏好设置</strong><br>
+  支持浅色和苹果风格深色外观；5 小时、1 周配额、重置时间、刷新间隔和开机自启均在同一页。
 </p>
 
 <p align="center">
@@ -146,6 +146,7 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 
 - 默认每 30 秒刷新一次，可调整为 10–300 秒。
 - 可选当前用户开机自启，不需要管理员权限。
+- 支持浅色与苹果风格深色主题，主题选择保存在本机。
 - 配置、日志和 Codex 运行时目录均位于本机用户目录。
 
 ## 刷新、配置与本地文件

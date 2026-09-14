@@ -13,6 +13,8 @@ const elements = {
   refreshSeconds: $("#refresh-seconds"),
   refreshOutput: $("#refresh-output"),
   autostart: $("#autostart"),
+  lightTheme: $("#light-theme-button"),
+  darkTheme: $("#dark-theme-button"),
   toast: $("#toast"),
 };
 
@@ -86,8 +88,16 @@ function renderState(state) {
     : "等待更新";
 }
 
+function applyTheme(theme) {
+  const normalized = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = normalized;
+  elements.lightTheme.setAttribute("aria-pressed", String(normalized === "light"));
+  elements.darkTheme.setAttribute("aria-pressed", String(normalized === "dark"));
+}
+
 function populateSettings(nextConfig) {
   config = structuredClone(nextConfig);
+  applyTheme(config.theme);
   elements.refreshSeconds.value = config.refresh_seconds;
   elements.refreshOutput.textContent = `${config.refresh_seconds} 秒`;
   elements.autostart.checked = config.autostart;
@@ -116,6 +126,7 @@ async function refresh() {
 async function saveSettings() {
   const next = {
     ...config,
+    theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
     refresh_seconds: Number(elements.refreshSeconds.value),
     autostart: elements.autostart.checked,
   };
@@ -169,6 +180,8 @@ $("#check-update-button").addEventListener("click", checkUpdate);
 elements.refreshSeconds.addEventListener("input", () => {
   elements.refreshOutput.textContent = `${elements.refreshSeconds.value} 秒`;
 });
+elements.lightTheme.addEventListener("click", () => applyTheme("light"));
+elements.darkTheme.addEventListener("click", () => applyTheme("dark"));
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   invoke("hide_panel");

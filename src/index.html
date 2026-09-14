@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <title>MetrikLite</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
@@ -61,6 +61,13 @@
       <section id="settings-content" class="settings-content" aria-label="设置">
         <div class="settings-heading">
           <span class="section-title">偏好设置</span>
+          <div class="theme-picker" role="group" aria-label="主题">
+            <span>外观</span>
+            <div class="theme-segment">
+              <button id="light-theme-button" type="button" aria-pressed="true">浅色</button>
+              <button id="dark-theme-button" type="button" aria-pressed="false">深色</button>
+            </div>
+          </div>
         </div>
 
         <div class="setting-row">

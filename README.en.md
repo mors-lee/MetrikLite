@@ -27,9 +27,10 @@
 ## Screenshots
 
 <p align="center">
-  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite main panel with quota windows and preferences">
-  <br><strong>Main panel: both quota windows and embedded preferences</strong><br>
-  The current version keeps quota details, refresh interval, autostart, update checks, and save actions on one page.
+  <img src="./docs/images/quota-panel.png" width="360" alt="MetrikLite main panel in light appearance">
+  <img src="./docs/images/quota-panel-dark.png" width="360" alt="MetrikLite main panel in dark appearance">
+  <br><strong>Main panel: light and Apple-inspired dark appearances</strong><br>
+  Both quota windows, reset times, refresh interval, autostart, update checks, and save actions stay on one page.
 </p>
 
 <p align="center">
@@ -48,6 +49,7 @@ MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Window
 - Multi-monitor and high-DPI aware positioning with complete rounded corners.
 - One persistent local Codex app-server session reused across refreshes.
 - Current-user autostart, manual refresh, automatic CLI discovery, and update checks.
+- Light and Apple-inspired dark themes, persisted locally with the other preferences.
 - Rust + Tauri 2; the official NSIS installer is approximately 1.3 MB.
 
 > The tray number uses the 5-hour window, while the main panel and hover text show both the 5-hour and weekly windows.

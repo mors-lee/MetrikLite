@@ -156,6 +156,11 @@ h1 { font-size: 17px; font-weight: 720; letter-spacing: -0.35px; }
 }
 .settings-heading { justify-content: space-between; margin-bottom: 5px; }
 .section-title { color: #61718a; font-size: 11px; font-weight: 700; }
+.theme-picker { display: flex; align-items: center; gap: 6px; }
+.theme-picker > span { color: #8794a9; font-size: 9px; }
+.theme-segment { display: flex; gap: 2px; padding: 2px; border: 1px solid rgba(126, 145, 177, 0.13); border-radius: 999px; background: rgba(226, 232, 242, 0.58); }
+.theme-segment button { min-width: 31px; height: 20px; padding: 2px 7px; border: 0; border-radius: 999px; color: #7a879b; background: transparent; cursor: pointer; font-size: 9px; line-height: 1; transition: color .16s ease, background .16s ease, box-shadow .16s ease; }
+.theme-segment button[aria-pressed="true"] { color: #42516b; background: rgba(255, 255, 255, .9); box-shadow: 0 1px 4px rgba(55, 74, 109, .12), inset 0 1px 0 rgba(255, 255, 255, .8); }
 .setting-row { display: flex; min-height: 29px; align-items: center; justify-content: space-between; gap: 12px; }
 .setting-row > strong, .toggle-row strong { color: #46556d; font-size: 10.5px; font-weight: 650; }
 .setting-row > strong { flex: 0 0 auto; white-space: nowrap; }
@@ -184,6 +189,38 @@ output { width: 43px; color: #6f7d92; font-size: 10px; text-align: right; }
 .sheet-actions button { flex: 1; }
 .toast { position: absolute; left: 50%; bottom: 17px; z-index: 10; max-width: 88%; padding: 8px 12px; transform: translateX(-50%); border-radius: 11px; color: white; background: rgba(37, 48, 68, .91); box-shadow: 0 8px 25px rgba(20, 30, 50, .22); font-size: 10px; text-align: center; }
 .hidden { display: none !important; }
+
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="dark"] body { color: #f4f7ff; }
+html[data-theme="dark"] .panel {
+  background:
+    radial-gradient(circle at 92% -12%, rgba(91, 133, 236, 0.3), transparent 38%),
+    radial-gradient(circle at -10% 110%, rgba(50, 83, 157, 0.24), transparent 42%),
+    rgba(17, 21, 30, 0.92);
+}
+html[data-theme="dark"] #status-line { color: #a8b4cb; }
+html[data-theme="dark"] .status-separator { color: #69758b; }
+html[data-theme="dark"] .icon-button { border-color: rgba(255, 255, 255, .12); color: #d5def0; background: rgba(255, 255, 255, .09); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
+html[data-theme="dark"] .icon-button:hover { background: rgba(255, 255, 255, .16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14); }
+html[data-theme="dark"] .quota-card { border-color: rgba(255, 255, 255, .12); background: rgba(42, 49, 64, .62); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09); }
+html[data-theme="dark"] .window-label { color: #b2bed4; }
+html[data-theme="dark"] .reset-line { color: #a9b5ca; }
+html[data-theme="dark"] .quota-percent { color: #f4f7ff; }
+html[data-theme="dark"] .meter { background: rgba(148, 163, 184, .22); }
+html[data-theme="dark"] .empty-symbol { color: #ffaaa5; background: rgba(122, 54, 63, .34); }
+html[data-theme="dark"] .empty-state p { color: #a9b5ca; }
+html[data-theme="dark"] .settings-content { border-color: rgba(255, 255, 255, .12); }
+html[data-theme="dark"] .section-title { color: #aebbd2; }
+html[data-theme="dark"] .theme-picker > span { color: #8795ad; }
+html[data-theme="dark"] .theme-segment { border-color: rgba(255, 255, 255, .1); background: rgba(7, 10, 16, .34); }
+html[data-theme="dark"] .theme-segment button { color: #8794aa; }
+html[data-theme="dark"] .theme-segment button[aria-pressed="true"] { color: #eef3ff; background: rgba(93, 111, 145, .72); box-shadow: 0 1px 4px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .13); }
+html[data-theme="dark"] .setting-row > strong, html[data-theme="dark"] .toggle-row strong { color: #c3cee1; }
+html[data-theme="dark"] output { color: #a9b5ca; }
+html[data-theme="dark"] .toggle-row i { background: #465269; box-shadow: inset 0 1px 2px rgba(0, 0, 0, .22); }
+html[data-theme="dark"] .toggle-row i::after { background: #f7f9ff; box-shadow: 0 2px 5px rgba(0, 0, 0, .34); }
+html[data-theme="dark"] .secondary-button { border-color: rgba(255, 255, 255, .14); color: #d5def0; background: rgba(255, 255, 255, .08); }
+html[data-theme="dark"] .primary-button { background: linear-gradient(180deg, #709df3, #4e82e8); box-shadow: 0 6px 14px rgba(32, 65, 135, .3); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
