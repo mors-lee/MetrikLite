@@ -29,11 +29,10 @@ impl Default for AppConfig {
 impl AppConfig {
     pub fn normalize(mut self) -> Self {
         self.refresh_seconds = self.refresh_seconds.clamp(10, 300);
-        self.codex_binary_path = self
-            .codex_binary_path
-            .take()
-            .map(|path| path.trim().trim_matches('"').to_owned())
-            .filter(|path| !path.is_empty());
+        // Codex CLI is resolved automatically; keep these fields only so older
+        // config files can still be deserialized without a migration step.
+        self.codex_binary_path = None;
+        self.light_glyphs = false;
         self
     }
 }

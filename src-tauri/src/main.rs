@@ -12,7 +12,7 @@ use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    App, AppHandle, Emitter, LogicalSize, Manager, Size, State,
+    App, AppHandle, Emitter, Manager, State,
 };
 use tokio::sync::{Mutex, RwLock};
 
@@ -45,13 +45,6 @@ async fn save_config(
     config: AppConfig,
 ) -> Result<AppConfig, String> {
     let normalized = config.normalize();
-    if normalized
-        .codex_binary_path
-        .as_deref()
-        .is_some_and(|path| path.to_ascii_lowercase().contains("\\windowsapps\\"))
-    {
-        return Err("不能选择 WindowsApps 内置 Codex；请使用独立 Codex CLI".into());
-    }
     config::set_autostart(normalized.autostart).map_err(|error| error.to_string())?;
     config::save(&normalized).map_err(|error| error.to_string())?;
     *state.config.write().await = normalized.clone();
@@ -95,21 +88,6 @@ fn hide_panel(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn set_panel_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
-    let Some(window) = app.get_webview_window("main") else {
-        return Ok(());
-    };
-    // Keep the command argument for frontend compatibility; both views use one size.
-    let _ = expanded;
-    let height = 470.0;
-    window
-        .set_size(Size::Logical(LogicalSize::new(380.0, height)))
-        .map_err(|error| error.to_string())?;
-    let (x, y) = tray_icon::cursor_position();
-    tray_icon::position_panel(&window, x, y).map_err(|error| error.to_string())
-}
-
-#[tauri::command]
 async fn quit_app(app: AppHandle) -> Result<(), String> {
     shutdown_and_exit(app).await;
     Ok(())
@@ -119,12 +97,7 @@ async fn refresh_application(app: &AppHandle) -> AppPayload {
     let state = app.state::<AppCore>();
     let _refresh_guard = state.refresh_gate.lock().await;
     let configuration = state.config.read().await.clone();
-    let result = state
-        .codex
-        .lock()
-        .await
-        .read(configuration.codex_binary_path.as_deref())
-        .await;
+    let result = state.codex.lock().await.read(None).await;
     let payload = match result {
         Ok(windows) => AppPayload::ready(windows),
         Err(error) => {
@@ -163,7 +136,7 @@ fn tray_tooltip(payload: &AppPayload) -> String {
         .find(|window| window.window_key == "secondary");
 
     if primary.is_none() && secondary.is_none() {
-        return "MetrikLite：点击查看并设置 Codex CLI".into();
+        return "MetrikLite：点击查看 Codex 配额".into();
     }
 
     let mut lines = vec!["剩余用量".to_string()];
@@ -214,7 +187,6 @@ fn toggle_panel(app: &AppHandle, position: (f64, f64)) {
 fn setup_tray(app: &App) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, "show", "显示配额", true, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", "立即刷新", true, None::<&str>)?;
-    let settings = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let check_update = MenuItem::with_id(app, "check-update", "检查更新", true, None::<&str>)?;
     let releases = MenuItem::with_id(app, "releases", "打开下载页面", true, None::<&str>)?;
     let separator_one = PredefinedMenuItem::separator(app)?;
@@ -226,7 +198,6 @@ fn setup_tray(app: &App) -> tauri::Result<()> {
             &show,
             &refresh,
             &separator_one,
-            &settings,
             &check_update,
             &releases,
             &separator_two,
@@ -246,10 +217,6 @@ fn setup_tray(app: &App) -> tauri::Result<()> {
                 tauri::async_runtime::spawn(async move {
                     refresh_application(&app).await;
                 });
-            }
-            "settings" => {
-                show_panel(app, None);
-                let _ = app.emit("open-settings", ());
             }
             "check-update" => {
                 show_panel(app, None);
@@ -343,7 +310,6 @@ fn main() {
             choose_codex_binary,
             open_url,
             hide_panel,
-            set_panel_expanded,
             quit_app
         ])
         .run(tauri::generate_context!())

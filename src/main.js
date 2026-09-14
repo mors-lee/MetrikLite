@@ -3,17 +3,15 @@ const { listen } = window.__TAURI__.event;
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
-  status: $("#status-line"),
+  statusDot: $(".status-dot"),
+  statusText: $("#status-text"),
   content: $("#quota-content"),
   empty: $("#empty-state"),
   emptyMessage: $("#empty-message"),
   updatedAt: $("#updated-at"),
   refresh: $("#refresh-button"),
-  settings: $("#settings-sheet"),
-  codexPath: $("#codex-path"),
   refreshSeconds: $("#refresh-seconds"),
   refreshOutput: $("#refresh-output"),
-  lightGlyphs: $("#light-glyphs"),
   autostart: $("#autostart"),
   toast: $("#toast"),
 };
@@ -72,7 +70,8 @@ function setQuotaWindow(key, quota) {
 function renderState(state) {
   appState = state;
   const dotClass = state.status === "ready" ? "live" : state.status === "error" ? "error" : "";
-  elements.status.innerHTML = `<span class="status-dot ${dotClass}"></span><span>${state.status_text}</span>`;
+  elements.statusDot.className = `status-dot ${dotClass}`;
+  elements.statusText.textContent = state.status_text;
   const primary = state.windows.find((item) => item.window_key === "primary");
   const secondary = state.windows.find((item) => item.window_key === "secondary");
   setQuotaWindow("primary", primary);
@@ -84,15 +83,13 @@ function renderState(state) {
     || (state.status === "ready" ? "Codex 当前未提供可用配额窗口。" : "请确认已安装并登录独立 Codex CLI。");
   elements.updatedAt.textContent = state.refreshed_at_ms
     ? `更新于 ${new Date(state.refreshed_at_ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`
-    : "尚未刷新";
+    : "等待更新";
 }
 
 function populateSettings(nextConfig) {
   config = structuredClone(nextConfig);
-  elements.codexPath.value = config.codex_binary_path || "";
   elements.refreshSeconds.value = config.refresh_seconds;
   elements.refreshOutput.textContent = `${config.refresh_seconds} 秒`;
-  elements.lightGlyphs.checked = config.light_glyphs;
   elements.autostart.checked = config.autostart;
 }
 
@@ -116,28 +113,15 @@ async function refresh() {
   }
 }
 
-function openSettings() {
-  invoke("set_panel_expanded", { expanded: true });
-  elements.settings.classList.remove("hidden");
-}
-
-function closeSettings() {
-  elements.settings.classList.add("hidden");
-  invoke("set_panel_expanded", { expanded: false });
-}
-
 async function saveSettings() {
   const next = {
     ...config,
-    codex_binary_path: elements.codexPath.value.trim() || null,
     refresh_seconds: Number(elements.refreshSeconds.value),
-    light_glyphs: elements.lightGlyphs.checked,
     autostart: elements.autostart.checked,
   };
   try {
     populateSettings(await invoke("save_config", { config: next }));
     showToast("设置已保存");
-    closeSettings();
     await refresh();
   } catch (error) {
     showToast(`保存失败：${error}`);
@@ -179,30 +163,19 @@ async function checkUpdate() {
 }
 
 elements.refresh.addEventListener("click", refresh);
-$("#settings-button").addEventListener("click", openSettings);
 $("#close-panel-button").addEventListener("click", () => invoke("hide_panel"));
-$("#empty-settings-button").addEventListener("click", openSettings);
-$("#close-settings-button").addEventListener("click", closeSettings);
 $("#save-settings-button").addEventListener("click", saveSettings);
 $("#check-update-button").addEventListener("click", checkUpdate);
 elements.refreshSeconds.addEventListener("input", () => {
   elements.refreshOutput.textContent = `${elements.refreshSeconds.value} 秒`;
 });
-$("#browse-button").addEventListener("click", async () => {
-  const selected = await invoke("choose_codex_binary");
-  if (selected) elements.codexPath.value = selected;
-});
-
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  if (!elements.settings.classList.contains("hidden")) closeSettings();
-  else invoke("hide_panel");
+  invoke("hide_panel");
 });
 
 await listen("quota-updated", (event) => renderState(event.payload));
-await listen("open-settings", () => openSettings());
 await listen("check-update", () => {
-  openSettings();
   checkUpdate();
 });
 
@@ -213,7 +186,6 @@ try {
   ]);
   renderState(initialState);
   populateSettings(initialConfig);
-  await invoke("set_panel_expanded", { expanded: false });
 } catch (error) {
   showToast(`初始化失败：${error}`, 5000);
 }

@@ -336,7 +336,7 @@ fn resolve_command(configured_path: Option<&str>) -> Result<CommandSpec> {
         }
     }
 
-    bail!("找不到 Codex CLI；请在设置中选择独立 codex.exe 或 codex.cmd")
+    bail!("找不到 Codex CLI；请确认已安装并登录 Codex CLI")
 }
 
 fn valid_candidate(path: PathBuf, reject_special_paths: bool) -> Option<CommandSpec> {

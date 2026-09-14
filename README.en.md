@@ -33,14 +33,14 @@ MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Window
 - Panel showing both the 5-hour and weekly quota windows, anchored to the active monitor work area.
 - Multi-monitor and high-DPI aware positioning with complete rounded corners.
 - One persistent local Codex app-server session reused across refreshes.
-- Current-user autostart, manual refresh, CLI selection, and update checks.
+- Current-user autostart, manual refresh, automatic CLI discovery, and update checks.
 - Rust + Tauri 2; the official NSIS installer is approximately 1.3 MB.
 
 > Starting with v2.0.4, the tray number uses the 5-hour window, while the main panel and hover text show both the 5-hour and weekly windows.
 
 ## Download
 
-[Download the MetrikLite v2.0.5 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.5/MetrikLite_2.0.5_x64-setup.exe)
+[Download the MetrikLite v2.0.6 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.6/MetrikLite_2.0.6_x64-setup.exe)
 
 The [latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) contains:
 
@@ -58,10 +58,10 @@ Windows 10/11 x64 is supported. If Microsoft Edge WebView2 Runtime is missing, t
 
 1. Install and launch MetrikLite.
 2. If an independent Codex CLI is installed and signed in, the tray shows the 5-hour remaining percentage.
-3. Hover over the number for both windows; left-click for the dual-window panel; right-click for refresh, settings, updates, downloads, and exit.
-4. If Codex is not detected, choose `codex.exe`, `codex.cmd`, or `codex.bat` in Settings.
+3. Hover over the number for both windows; left-click for the dual-window panel; right-click for refresh, updates, downloads, and exit.
+4. Adjust the refresh interval or autostart in the main panel and click **Save** when needed.
 
-If Codex is unavailable, MetrikLite stays accessible with a `!` tray icon and an actionable settings screen instead of silently disappearing.
+If Codex is unavailable, MetrikLite stays accessible with a `!` tray icon and an actionable main panel instead of silently disappearing.
 
 ## SmartScreen and verification
 
@@ -93,11 +93,11 @@ The default refresh interval is 30 seconds and can be configured from 10 to 300 
 
 ## Codex discovery
 
-MetrikLite checks `CODEX_BINARY`, the configured path, official `OpenAI.Codex_*` WinGet packages, `%APPDATA%\npm\codex.cmd`, and then `PATH`. Protected WindowsApps paths and known unrelated launchers are skipped.
+MetrikLite checks `CODEX_BINARY`, official `OpenAI.Codex_*` WinGet packages, `%APPDATA%\npm\codex.cmd`, and then `PATH`. Protected WindowsApps paths and known unrelated launchers are skipped.
 
 ## Privacy and network access
 
-MetrikLite reads only its own local configuration, a Codex CLI path, quota data returned by Codex app-server, and Segoe UI font data used to render the tray number.
+MetrikLite reads only its own local configuration, an automatically discovered Codex CLI path, quota data returned by Codex app-server, and Segoe UI font data used to render the tray number.
 
 It does **not** read Codex conversations, prompts, responses, project files, repositories, clipboard data, browser data, GitHub credentials, or Codex credential-file contents. MetrikLite never reads sensitive credentials, so no credential-access switch is required; Codex CLI owns authentication.
 

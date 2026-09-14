@@ -32,7 +32,7 @@
 
 ### 推荐：NSIS 安装向导
 
-> **[立即下载 MetrikLite v2.0.5](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.5/MetrikLite_2.0.5_x64-setup.exe)**
+> **[立即下载 MetrikLite v2.0.6](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.6/MetrikLite_2.0.6_x64-setup.exe)**
 
 也可以前往 [Latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) 获取当前最新版：
 
@@ -51,8 +51,7 @@
 1. 下载上方的 `MetrikLite_*_x64-setup.exe` 并运行安装向导。
 2. 启动 MetrikLite，确认本机已经安装并登录独立 Codex CLI。
 3. 查看 Windows 托盘数字（显示 5 小时窗口剩余百分比）；左键点击数字打开同时显示 5 小时和 1 周窗口的配额面板，右键点击打开功能菜单。
-4. 如果没有自动识别 Codex，进入“设置”并选择 `codex.exe`、`codex.cmd` 或 `codex.bat`。
-5. 保存设置后点击“立即刷新”，即可读取 5 小时和 1 周配额。
+4. 在主面板中调整刷新间隔或开机自启后点击“保存”；也可以点击顶部刷新按钮立即更新配额。
 
 ### 关于 Windows 的“未知发布者”提示
 
@@ -76,7 +75,7 @@
     <td width="50%" align="center">
       <img src="./docs/images/settings-panel.png" width="290" alt="偏好设置面板">
       <br><strong>偏好设置面板</strong><br>
-      选择 CLI 路径、调整刷新间隔和开机自启。
+      调整刷新间隔和开机自启。
     </td>
   </tr>
   <tr>
@@ -97,7 +96,7 @@
 | 想看配额，却要先打开 Codex | 托盘数字持续显示 5 小时剩余百分比，鼠标悬停即可查看 5 小时和 1 周用量 |
 | 需要同时掌握短时和每周窗口 | v2.0.4 起，托盘显示 5 小时窗口，主面板和悬停提示同时显示两个窗口 |
 | 托盘数字太小、不同位数难辨认 | `0`–`100` 自动缩放并居中，剩余不高于 20% 时显示红色 |
-| 不同电脑上的 Codex 路径不一致 | 自动查找 CLI，也可以在设置中指定 `codex.exe`、`codex.cmd` 或 `codex.bat` |
+| 不同电脑上的 Codex 路径不一致 | 自动查找 CLI，不需要手动指定路径 |
 | 面板经常挡住任务栏或跑到错误的屏幕 | 面板按当前鼠标所在显示器的工作区定位，支持多显示器和高 DPI |
 | 不想把账号数据交给第三方服务 | 复用本机 Codex app-server；MetrikLite 没有自己的账户、云服务、分析或广告 SDK |
 
@@ -106,7 +105,7 @@
 ```mermaid
 flowchart LR
     A["Windows 启动 / 托盘点击"] --> B["MetrikLite"]
-    B --> C["查找 Codex CLI<br/>环境变量 · 设置 · WinGet · npm · PATH"]
+    B --> C["自动查找 Codex CLI<br/>环境变量 · WinGet · npm · PATH"]
     C --> D["本机 codex app-server<br/>JSON-RPC stdout"]
     D --> E["account/rateLimits/read"]
     E --> F["5 小时配额 · 每周配额 · 重置时间"]
@@ -114,7 +113,7 @@ flowchart LR
     B -.-> H["用户主动检查更新<br/>api.github.com"]
 ```
 
-CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新失败时不会让托盘程序消失，而是保留 `!` 状态和可操作的设置入口。
+CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新失败时不会让托盘程序消失，而是保留 `!` 状态和可操作的主面板。
 
 ## 核心能力
 
@@ -130,7 +129,7 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 
 - 左键点击托盘数字，显示或隐藏配额面板。
 - 面板同时展示 5 小时和 1 周窗口的剩余百分比、进度条、绝对重置时间和相对倒计时。
-- 右键菜单提供显示配额、立即刷新、设置、检查更新、打开下载页面和退出。
+- 右键菜单提供显示配额、立即刷新、检查更新、打开下载页面和退出。
 - 面板锚定当前显示器工作区右下角，尽量避开任务栏；空间不足时回退到工作区左上角。
 - 支持常规 Windows 缩放、多显示器和高 DPI 环境。
 
@@ -142,23 +141,21 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 - 退出时先正常关闭标准输入并等待进程结束，超时后才终止直接子进程。
 - MetrikLite 不读取 Codex 凭据文件，也不读取对话、提示词、回答或项目内容；登录仍由 Codex CLI 自己负责。
 
-### 自动查找或手动指定 CLI
+### 自动查找 Codex CLI
 
 默认按以下顺序寻找 Codex CLI：
 
 1. `CODEX_BINARY` 环境变量。
-2. MetrikLite 设置中保存的路径。
-3. 官方 WinGet `OpenAI.Codex_*` 包中的原生 Windows EXE。
-4. `%APPDATA%\npm\codex.cmd`。
-5. `PATH` 中可用的 Codex CLI。
+2. 官方 WinGet `OpenAI.Codex_*` 包中的原生 Windows EXE。
+3. `%APPDATA%\npm\codex.cmd`。
+4. `PATH` 中可用的 Codex CLI。
 
-如果自动识别失败，可以在“设置”中浏览选择 `codex.exe`、`codex.cmd` 或 `codex.bat`。受保护的 `WindowsApps` 内置路径和已知的同名第三方启动器会被跳过，避免误用错误的程序。
+受保护的 `WindowsApps` 内置路径和已知的同名第三方启动器会被跳过，避免误用错误的程序。
 
 ### 轻量配置，保持在本机
 
 - 默认每 30 秒刷新一次，可调整为 10–300 秒。
 - 可选当前用户开机自启，不需要管理员权限。
-- 可切换浅色托盘字形，以适配不同 Windows 主题。
 - 配置、日志和 Codex 运行时目录均位于本机用户目录。
 
 ## 刷新、配置与本地文件
@@ -184,7 +181,7 @@ HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MetrikLite
 ### MetrikLite 会读取
 
 - MetrikLite 自己的本地配置和日志目录。
-- 用户指定或自动找到的 Codex CLI 文件路径。
+- 自动找到的 Codex CLI 文件路径。
 - Codex app-server 返回的 5 小时和 1 周配额百分比、窗口时长和重置时间。
 - Windows 字体目录中的 Segoe UI Semibold/Bold，仅用于渲染托盘数字。
 
@@ -204,7 +201,7 @@ Codex 登录和它为获取账户配额而进行的 OpenAI 通信由 Codex CLI �
 | `api.github.com` | 用户点击“检查更新” | 获取公开 Release 的版本信息 |
 | `github.com` | 用户主动打开下载页面 | 由默认浏览器显示 MetrikLite Release 页面 |
 
-更新检查不是后台遥测；只有用户从菜单或设置中主动触发时才会请求 GitHub 公共 Release 元数据。
+更新检查不是后台遥测；只有用户从托盘菜单或主面板中主动触发时才会请求 GitHub 公共 Release 元数据。
 
 ## 从源码构建
 

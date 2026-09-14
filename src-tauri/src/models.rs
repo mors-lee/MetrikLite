@@ -51,7 +51,7 @@ impl AppPayload {
         Self {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             status: "ready".into(),
-            status_text: "Codex 配额已连接".into(),
+            status_text: "已连接".into(),
             error_message: None,
             windows,
             tray_percent,
