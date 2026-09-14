@@ -180,6 +180,7 @@ async function checkUpdate() {
 
 elements.refresh.addEventListener("click", refresh);
 $("#settings-button").addEventListener("click", openSettings);
+$("#close-panel-button").addEventListener("click", () => invoke("hide_panel"));
 $("#empty-settings-button").addEventListener("click", openSettings);
 $("#close-settings-button").addEventListener("click", closeSettings);
 $("#save-settings-button").addEventListener("click", saveSettings);

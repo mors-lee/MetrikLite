@@ -99,7 +99,9 @@ fn set_panel_expanded(app: AppHandle, expanded: bool) -> Result<(), String> {
     let Some(window) = app.get_webview_window("main") else {
         return Ok(());
     };
-    let height = if expanded { 470.0 } else { 390.0 };
+    // Keep the command argument for frontend compatibility; both views use one size.
+    let _ = expanded;
+    let height = 470.0;
     window
         .set_size(Size::Logical(LogicalSize::new(380.0, height)))
         .map_err(|error| error.to_string())?;
