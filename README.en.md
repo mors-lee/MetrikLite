@@ -24,19 +24,33 @@
   <a href="./SECURITY.md">Security</a>
 </p>
 
+## Screenshots
+
+<p align="center">
+  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite main panel with quota windows and preferences">
+  <br><strong>Main panel: both quota windows and embedded preferences</strong><br>
+  The current version keeps quota details, refresh interval, autostart, update checks, and save actions on one page.
+</p>
+
+<p align="center">
+  <img src="./docs/images/tray-quota.png" width="520" alt="MetrikLite 5-hour percentage in the Windows tray">
+  <br><strong>Windows tray number</strong><br>
+  The tray number shows the 5-hour remaining percentage; hovering reveals both quota windows and reset times.
+</p>
+
 ## At a glance
 
 MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Windows notification-area icon. Hover over the number to see both quota windows and reset times, or left-click for a panel above the taskbar.
 
 - Auto-scaled, optically centered values from `0` to `100`.
-- Two-line hover text with remaining percentage and reset date.
-- Panel showing both the 5-hour and weekly quota windows, anchored to the active monitor work area.
+- Hover text lists the 5-hour and weekly remaining percentages with reset times.
+- One-page panel showing both the 5-hour and weekly quota windows plus embedded preferences, anchored to the active monitor work area.
 - Multi-monitor and high-DPI aware positioning with complete rounded corners.
 - One persistent local Codex app-server session reused across refreshes.
 - Current-user autostart, manual refresh, automatic CLI discovery, and update checks.
 - Rust + Tauri 2; the official NSIS installer is approximately 1.3 MB.
 
-> Starting with v2.0.4, the tray number uses the 5-hour window, while the main panel and hover text show both the 5-hour and weekly windows.
+> The tray number uses the 5-hour window, while the main panel and hover text show both the 5-hour and weekly windows.
 
 ## Download
 

@@ -25,7 +25,7 @@
   </p>
 
   <br>
-  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 5 小时与每周配额面板">
+  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 主面板：5 小时与 1 周配额及偏好设置">
 </div>
 
 ## 快速开始：下载并安装
@@ -65,27 +65,17 @@
 
 ## 界面预览
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-       <img src="./docs/images/quota-panel.png" width="430" alt="5 小时与每周配额面板">
-       <br><strong>5 小时与每周配额面板</strong><br>
-       同时显示两个窗口的剩余百分比、进度条和重置倒计时。
-    </td>
-    <td width="50%" align="center">
-      <img src="./docs/images/settings-panel.png" width="290" alt="偏好设置面板">
-      <br><strong>偏好设置面板</strong><br>
-      调整刷新间隔和开机自启。
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center">
-      <img src="./docs/images/tray-quota.png" width="520" alt="Windows 托盘配额显示">
-      <br><strong>Windows 托盘显示</strong><br>
-       托盘数字显示 5 小时剩余百分比，悬停可查看 5 小时与 1 周用量及重置时间。
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="./docs/images/quota-panel.png" width="520" alt="MetrikLite 主面板：5 小时与 1 周配额及偏好设置">
+  <br><strong>主面板：双窗口配额与内嵌偏好设置</strong><br>
+  当前版本将 5 小时、1 周配额、重置时间、刷新间隔和开机自启放在同一页；不再使用独立设置窗口。
+</p>
+
+<p align="center">
+  <img src="./docs/images/tray-quota.png" width="520" alt="Windows 托盘中的 MetrikLite 5 小时配额数字">
+  <br><strong>Windows 托盘数字</strong><br>
+  托盘数字显示 5 小时窗口剩余百分比；悬停可查看 5 小时与 1 周用量及重置时间。
+</p>
 
 ## MetrikLite 是什么？
 
@@ -94,7 +84,7 @@
 | 日常问题 | MetrikLite 的处理方式 |
 | --- | --- |
 | 想看配额，却要先打开 Codex | 托盘数字持续显示 5 小时剩余百分比，鼠标悬停即可查看 5 小时和 1 周用量 |
-| 需要同时掌握短时和每周窗口 | v2.0.4 起，托盘显示 5 小时窗口，主面板和悬停提示同时显示两个窗口 |
+| 需要同时掌握短时和每周窗口 | 托盘显示 5 小时窗口，主面板和悬停提示同时显示两个窗口 |
 | 托盘数字太小、不同位数难辨认 | `0`–`100` 自动缩放并居中，剩余不高于 20% 时显示红色 |
 | 不同电脑上的 Codex 路径不一致 | 自动查找 CLI，不需要手动指定路径 |
 | 面板经常挡住任务栏或跑到错误的屏幕 | 面板按当前鼠标所在显示器的工作区定位，支持多显示器和高 DPI |
