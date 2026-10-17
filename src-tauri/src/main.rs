@@ -93,6 +93,14 @@ fn hide_panel(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn set_panel_content_height(app: AppHandle, height: f64) -> Result<(), String> {
+    if tray_icon::set_panel_content_height(height)? {
+        schedule_panel_repair(&app);
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn quit_app(app: AppHandle) -> Result<(), String> {
     shutdown_and_exit(app).await;
     Ok(())
@@ -369,6 +377,7 @@ fn main() {
             choose_codex_binary,
             open_url,
             hide_panel,
+            set_panel_content_height,
             quit_app
         ])
         .run(tauri::generate_context!())

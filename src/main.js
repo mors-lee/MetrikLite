@@ -37,6 +37,30 @@ let appState = null;
 let config = null;
 let toastTimer = null;
 
+const panel = $(".panel");
+let panelHeightTimer = null;
+let reportedPanelHeight = null;
+
+function reportPanelHeight() {
+  clearTimeout(panelHeightTimer);
+  panelHeightTimer = setTimeout(async () => {
+    // Measure normal-flow content, not the viewport, so native resizing cannot
+    // feed its old height back into the measurement and leave empty space.
+    const height = Math.ceil(panel.getBoundingClientRect().height);
+    if (!Number.isFinite(height) || height < 200 || height === reportedPanelHeight) return;
+    try {
+      await invoke("set_panel_content_height", { height });
+      reportedPanelHeight = height;
+    } catch (error) {
+      console.warn("Unable to fit the panel to its content:", error);
+    }
+  }, 50);
+}
+
+const panelResizeObserver = new ResizeObserver(reportPanelHeight);
+panelResizeObserver.observe(panel);
+document.fonts.ready.then(reportPanelHeight);
+
 function formatPercent(value) {
   if (!Number.isFinite(value)) return "—";
   const rounded = Math.round(value * 10) / 10;

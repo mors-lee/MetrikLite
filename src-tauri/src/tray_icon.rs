@@ -1,11 +1,34 @@
 use ab_glyph::{point, Font, FontArc, Glyph, PxScale, Rect, ScaleFont};
-use std::{fs, path::PathBuf, sync::OnceLock};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        OnceLock,
+    },
+};
 use tauri::{
     image::Image, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Position, WebviewWindow,
 };
 
 const ICON_SIZE: u32 = 32;
 static FONT: OnceLock<Option<FontArc>> = OnceLock::new();
+static PANEL_CONTENT_HEIGHT: AtomicU32 = AtomicU32::new(0);
+
+pub fn set_panel_content_height(height: f64) -> Result<bool, String> {
+    if !height.is_finite() || !(200.0..=1200.0).contains(&height) {
+        return Err("Invalid panel content height".into());
+    }
+    let height = height.ceil() as u32;
+    Ok(PANEL_CONTENT_HEIGHT.swap(height, Ordering::AcqRel) != height)
+}
+
+fn panel_content_height(initial_height: f64) -> f64 {
+    match PANEL_CONTENT_HEIGHT.load(Ordering::Acquire) {
+        0 => initial_height,
+        height => height as f64,
+    }
+}
 
 pub fn render(percent: Option<i32>, light_glyphs: bool) -> Image<'static> {
     let text = percent
@@ -170,7 +193,11 @@ pub fn position_panel(window: &WebviewWindow, cursor_x: f64, cursor_y: f64) -> t
     };
     // Predict the destination size for positioning only. Resizing before moving
     // would let WM_DPICHANGED apply the monitor's scale a second time.
-    let logical = panel_logical_size(panel.width, panel.height, text_scale_factor());
+    let logical = panel_logical_size(
+        panel.width,
+        panel_content_height(panel.height),
+        text_scale_factor(),
+    );
     let size = panel_size(logical.width, logical.height, monitor.scale_factor());
     let area = monitor.work_area();
     let fallback = (
@@ -229,7 +256,11 @@ fn repair_panel_size(window: &WebviewWindow) -> tauri::Result<()> {
     // Read the window's DPI AFTER moving it. Keep the configured min/max bounds
     // logical so they remain valid when another monitor uses a different DPI.
     let scale_factor = window.scale_factor()?;
-    let logical = panel_logical_size(panel.width, panel.height, text_scale_factor());
+    let logical = panel_logical_size(
+        panel.width,
+        panel_content_height(panel.height),
+        text_scale_factor(),
+    );
     let expected = panel_size(logical.width, logical.height, scale_factor);
     let actual = window.inner_size()?;
     if actual != expected {
