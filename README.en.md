@@ -56,7 +56,7 @@ MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Window
 
 ## Download
 
-[Download the MetrikLite v2.0.7 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.7/MetrikLite_2.0.7_x64-setup.exe)
+[Download the MetrikLite v2.0.8 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.8/MetrikLite_2.0.8_x64-setup.exe)
 
 The [latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) contains:
 

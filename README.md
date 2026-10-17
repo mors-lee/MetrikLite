@@ -33,7 +33,7 @@
 
 ### 推荐：NSIS 安装向导
 
-> **[立即下载 MetrikLite v2.0.7](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.7/MetrikLite_2.0.7_x64-setup.exe)**
+> **[立即下载 MetrikLite v2.0.8](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.8/MetrikLite_2.0.8_x64-setup.exe)**
 
 也可以前往 [Latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) 获取当前最新版：
 
