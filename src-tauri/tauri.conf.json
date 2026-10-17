@@ -29,6 +29,7 @@
         "shadow": false,
         "alwaysOnTop": true,
         "skipTaskbar": true,
+        "zoomHotkeysEnabled": false,
         "center": false
       }
     ],

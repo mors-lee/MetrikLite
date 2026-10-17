@@ -47,8 +47,9 @@ body {
   align-items: center;
 }
 
-.topbar { justify-content: space-between; margin-bottom: 11px; }
-.brand { min-width: 0; gap: 11px; }
+.topbar { justify-content: space-between; gap: 10px; margin-bottom: 11px; }
+.brand { min-width: 0; flex: 1; gap: 11px; }
+.brand > div { min-width: 0; }
 .brand-icon {
   display: block;
   width: 48px;
@@ -89,11 +90,12 @@ h1 { font-size: 17px; font-weight: 720; letter-spacing: -0.35px; }
 .status-dot.error::after { background: #df605d; }
 .status-separator { color: #b0bac9; }
 
-.top-actions { gap: 7px; }
+.top-actions { flex: 0 0 auto; gap: 7px; }
 .icon-button {
   display: grid;
   width: 34px;
   height: 34px;
+  flex: 0 0 auto;
   padding: 0;
   place-items: center;
   border: 1px solid rgba(126, 145, 177, 0.16);
@@ -118,7 +120,7 @@ h1 { font-size: 17px; font-weight: 720; letter-spacing: -0.35px; }
   backdrop-filter: blur(18px) saturate(140%);
 }
 .card-heading { justify-content: space-between; min-width: 0; gap: 10px; }
-.window-label { color: #71819a; font-size: 11px; font-weight: 700; letter-spacing: .1px; }
+.window-label { flex: 0 0 auto; color: #71819a; font-size: 11px; font-weight: 700; letter-spacing: .1px; white-space: nowrap; }
 .reset-line {
   min-width: 0;
   overflow: hidden;

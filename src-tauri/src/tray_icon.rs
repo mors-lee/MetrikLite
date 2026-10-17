@@ -1,6 +1,8 @@
 use ab_glyph::{point, Font, FontArc, Glyph, PxScale, Rect, ScaleFont};
 use std::{fs, path::PathBuf, sync::OnceLock};
-use tauri::{image::Image, PhysicalPosition, Position, WebviewWindow};
+use tauri::{
+    image::Image, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Position, WebviewWindow,
+};
 
 const ICON_SIZE: u32 = 32;
 static FONT: OnceLock<Option<FontArc>> = OnceLock::new();
@@ -154,19 +156,110 @@ fn draw_fallback(pixels: &mut [u8], light_glyphs: bool) {
 }
 
 pub fn position_panel(window: &WebviewWindow, cursor_x: f64, cursor_y: f64) -> tauri::Result<()> {
-    let size = window.outer_size()?;
-    let (left, top, right, bottom) = work_area(cursor_x as i32, cursor_y as i32).unwrap_or((
-        0,
-        0,
-        cursor_x as i32 + 20,
-        cursor_y as i32 + 20,
-    ));
+    let monitor = window
+        .monitor_from_point(cursor_x, cursor_y)?
+        .or(window.current_monitor()?)
+        .or(window.primary_monitor()?);
+    let Some(monitor) = monitor else {
+        // Displays can temporarily disappear while docking or resuming.
+        return Ok(());
+    };
+    let configuration = &window.app_handle().config().app.windows;
+    let Some(panel) = configuration.iter().find(|panel| panel.label == "main") else {
+        return Ok(());
+    };
+    // Predict the destination size for positioning only. Resizing before moving
+    // would let WM_DPICHANGED apply the monitor's scale a second time.
+    let logical = panel_logical_size(panel.width, panel.height, text_scale_factor());
+    let size = panel_size(logical.width, logical.height, monitor.scale_factor());
+    let area = monitor.work_area();
+    let fallback = (
+        area.position.x,
+        area.position.y,
+        area.position.x + area.size.width as i32,
+        area.position.y + area.size.height as i32,
+    );
     let (x, y) = panel_position(
-        (left, top, right, bottom),
+        work_area(cursor_x as i32, cursor_y as i32).unwrap_or(fallback),
         size.width as i32,
         size.height as i32,
     );
-    window.set_position(Position::Physical(PhysicalPosition::new(x, y)))
+    let position = PhysicalPosition::new(x, y);
+    if window.outer_position()? != position {
+        window.set_position(Position::Physical(position))?;
+    }
+    repair_panel_size(window)
+}
+
+fn panel_size(width: f64, height: f64, scale_factor: f64) -> PhysicalSize<u32> {
+    PhysicalSize::new(
+        (width * scale_factor).round() as u32,
+        (height * scale_factor).round() as u32,
+    )
+}
+
+fn panel_logical_size(width: f64, height: f64, text_scale: f64) -> LogicalSize<f64> {
+    LogicalSize::new(width * text_scale, height * text_scale)
+}
+
+#[cfg(windows)]
+fn text_scale_factor() -> f64 {
+    use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+
+    // WebView2 includes Windows accessibility text scaling in devicePixelRatio,
+    // while the native window's DPI does not. Preserve the CSS viewport instead
+    // of shrinking the user's chosen text size or clipping the bottom controls.
+    RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(r"Software\Microsoft\Accessibility")
+        .and_then(|key| key.get_value::<u32, _>("TextScaleFactor"))
+        .map(|percent| percent.clamp(100, 225) as f64 / 100.0)
+        .unwrap_or(1.0)
+}
+
+#[cfg(not(windows))]
+fn text_scale_factor() -> f64 {
+    1.0
+}
+
+fn repair_panel_size(window: &WebviewWindow) -> tauri::Result<()> {
+    let configuration = &window.app_handle().config().app.windows;
+    let Some(panel) = configuration.iter().find(|panel| panel.label == "main") else {
+        return Ok(());
+    };
+    // Read the window's DPI AFTER moving it. Keep the configured min/max bounds
+    // logical so they remain valid when another monitor uses a different DPI.
+    let scale_factor = window.scale_factor()?;
+    let logical = panel_logical_size(panel.width, panel.height, text_scale_factor());
+    let expected = panel_size(logical.width, logical.height, scale_factor);
+    let actual = window.inner_size()?;
+    if actual != expected {
+        // Update both bounds in logical units when accessibility scaling changes.
+        window.set_max_size(None::<LogicalSize<f64>>)?;
+        window.set_min_size(Some(logical))?;
+        window.set_max_size(Some(logical))?;
+        window.set_size(logical)?;
+        crate::logging::info(format!(
+            "panel size restored: {}x{} -> {}x{}, scale={scale_factor}",
+            actual.width, actual.height, expected.width, expected.height
+        ));
+    }
+    // Reset the complete bounds, including the origin and auto-resize ratios.
+    // Size equality alone cannot detect stale WebView placement after docking.
+    // Use the actual client size so the WebView always fills its parent exactly.
+    let webview: &tauri::Webview = window.as_ref();
+    webview.set_bounds(tauri::Rect {
+        position: PhysicalPosition::new(0, 0).into(),
+        size: window.inner_size()?.into(),
+    })?;
+    window.set_zoom(1.0)?;
+    Ok(())
+}
+
+pub fn repair_panel(window: &WebviewWindow) -> tauri::Result<()> {
+    let position = window.outer_position()?;
+    // The center of an incorrectly scaled window can lie on a different screen.
+    // Its top-left corner remains inside the monitor chosen when opening it.
+    position_panel(window, position.x as f64 + 1.0, position.y as f64 + 1.0)
 }
 
 fn panel_position(work_area: (i32, i32, i32, i32), width: i32, height: i32) -> (i32, i32) {
@@ -235,7 +328,7 @@ fn work_area(_x: i32, _y: i32) -> Option<(i32, i32, i32, i32)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{panel_position, render};
+    use super::{panel_logical_size, panel_position, panel_size, render};
 
     fn ink_size(image: &tauri::image::Image<'_>) -> (u32, u32) {
         let mut left = image.width();
@@ -273,6 +366,43 @@ mod tests {
     #[test]
     fn anchors_panel_to_work_area_bottom_right() {
         assert_eq!(panel_position((0, 0, 1186, 847), 665, 823), (515, 18));
+    }
+
+    #[test]
+    fn panel_keeps_logical_size_across_dpi_changes() {
+        for (scale, width, height) in [
+            (1.0, 380, 470),
+            (1.25, 475, 588),
+            (1.75, 665, 823),
+            (2.0, 760, 940),
+            (2.5, 950, 1175),
+            (1.0, 380, 470),
+        ] {
+            let size = panel_size(380.0, 470.0, scale);
+            assert_eq!((size.width, size.height), (width, height));
+        }
+    }
+
+    #[test]
+    fn accessibility_text_scaling_preserves_css_viewport_on_both_displays() {
+        let logical = panel_logical_size(380.0, 470.0, 1.2);
+        assert_eq!(panel_size(logical.width, logical.height, 1.75).width, 798);
+        assert_eq!(panel_size(logical.width, logical.height, 1.75).height, 987);
+        assert_eq!(panel_size(logical.width, logical.height, 1.5).width, 684);
+        assert_eq!(panel_size(logical.width, logical.height, 1.5).height, 846);
+    }
+
+    #[test]
+    fn restored_panel_fits_secondary_monitor_work_area() {
+        let size = panel_size(380.0, 470.0, 2.0);
+        assert_eq!(
+            panel_position(
+                (-1920, -120, 0, 1040),
+                size.width as i32,
+                size.height as i32
+            ),
+            (-766, 94)
+        );
     }
 
     #[test]

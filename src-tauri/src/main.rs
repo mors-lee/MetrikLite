@@ -8,13 +8,18 @@ mod tray_icon;
 
 use config::AppConfig;
 use models::AppPayload;
-use std::time::Duration;
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
+};
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     App, AppHandle, Emitter, Manager, State,
 };
 use tokio::sync::{Mutex, RwLock};
+
+static PANEL_LAYOUT_REVISION: AtomicU64 = AtomicU64::new(0);
 
 struct AppCore {
     config: RwLock<AppConfig>,
@@ -164,13 +169,54 @@ fn format_tray_window(label: &str, window: Option<&models::QuotaWindow>) -> Stri
 }
 
 fn show_panel(app: &AppHandle, position: Option<(f64, f64)>) {
-    let Some(window) = app.get_webview_window("main") else {
-        return;
-    };
-    let (x, y) = position.unwrap_or_else(tray_icon::cursor_position);
-    let _ = tray_icon::position_panel(&window, x, y);
-    let _ = window.show();
-    let _ = window.set_focus();
+    // Single-instance callbacks may arrive off-thread. Keep move/resize/bounds
+    // updates in one UI-thread operation instead of queuing interleaved setters.
+    let panel_app = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let Some(window) = panel_app.get_webview_window("main") else {
+            return;
+        };
+        let (x, y) = position.unwrap_or_else(tray_icon::cursor_position);
+        if let Err(error) = tray_icon::position_panel(&window, x, y) {
+            logging::error(format!("panel preparation failed: {error}"));
+        }
+        let _ = window.show();
+        let _ = window.set_focus();
+        schedule_panel_repair(&panel_app);
+    });
+}
+
+fn schedule_panel_repair(app: &AppHandle) {
+    let revision = PANEL_LAYOUT_REVISION.fetch_add(1, Ordering::AcqRel) + 1;
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // New display events supersede older repairs instead of being dropped.
+        // A second, bounded pass lets asynchronous WebView/DPI updates settle.
+        for delay in [200, 600] {
+            tokio::time::sleep(Duration::from_millis(delay)).await;
+            if PANEL_LAYOUT_REVISION.load(Ordering::Acquire) != revision {
+                return;
+            }
+            let repair_app = app.clone();
+            if app
+                .run_on_main_thread(move || {
+                    if PANEL_LAYOUT_REVISION.load(Ordering::Acquire) != revision {
+                        return;
+                    }
+                    if let Some(window) = repair_app.get_webview_window("main") {
+                        if window.is_visible().unwrap_or(false) {
+                            if let Err(error) = tray_icon::repair_panel(&window) {
+                                logging::error(format!("panel recovery failed: {error}"));
+                            }
+                        }
+                    }
+                })
+                .is_err()
+            {
+                return;
+            }
+        }
+    });
 }
 
 fn toggle_panel(app: &AppHandle, position: (f64, f64)) {
@@ -291,14 +337,27 @@ fn main() {
                 refresh_gate: Mutex::new(()),
             });
             setup_tray(app)?;
+            if let Some(window) = app.get_webview_window("main") {
+                let webview: &tauri::Webview = window.as_ref();
+                webview.set_auto_resize(true)?;
+            }
             start_refresh_loop(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    api.prevent_close();
-                    let _ = window.hide();
+                match event {
+                    tauri::WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                    tauri::WindowEvent::ScaleFactorChanged { .. }
+                    | tauri::WindowEvent::Resized(_)
+                    | tauri::WindowEvent::Moved(_)
+                    | tauri::WindowEvent::Focused(true) => {
+                        schedule_panel_repair(window.app_handle());
+                    }
+                    _ => {}
                 }
             }
         })
