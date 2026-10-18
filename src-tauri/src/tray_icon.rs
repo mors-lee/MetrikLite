@@ -12,6 +12,9 @@ use tauri::{
 };
 
 const ICON_SIZE: u32 = 32;
+// Use the same deliberate UI scale for native geometry and WebView zoom.
+// Shrinking only one side would reintroduce clipping on mixed-DPI displays.
+const PANEL_UI_SCALE: f64 = 0.85;
 static FONT: OnceLock<Option<FontArc>> = OnceLock::new();
 static PANEL_CONTENT_HEIGHT: AtomicU32 = AtomicU32::new(0);
 
@@ -226,7 +229,8 @@ fn panel_size(width: f64, height: f64, scale_factor: f64) -> PhysicalSize<u32> {
 }
 
 fn panel_logical_size(width: f64, height: f64, text_scale: f64) -> LogicalSize<f64> {
-    LogicalSize::new(width * text_scale, height * text_scale)
+    let scale = text_scale * PANEL_UI_SCALE;
+    LogicalSize::new(width * scale, height * scale)
 }
 
 #[cfg(windows)]
@@ -234,8 +238,8 @@ fn text_scale_factor() -> f64 {
     use winreg::{enums::HKEY_CURRENT_USER, RegKey};
 
     // WebView2 includes Windows accessibility text scaling in devicePixelRatio,
-    // while the native window's DPI does not. Preserve the CSS viewport instead
-    // of shrinking the user's chosen text size or clipping the bottom controls.
+    // while the native window's DPI does not. Include it alongside the compact
+    // application scale so the CSS viewport and bottom controls remain intact.
     RegKey::predef(HKEY_CURRENT_USER)
         .open_subkey(r"Software\Microsoft\Accessibility")
         .and_then(|key| key.get_value::<u32, _>("TextScaleFactor"))
@@ -282,7 +286,7 @@ fn repair_panel_size(window: &WebviewWindow) -> tauri::Result<()> {
         position: PhysicalPosition::new(0, 0).into(),
         size: window.inner_size()?.into(),
     })?;
-    window.set_zoom(1.0)?;
+    window.set_zoom(PANEL_UI_SCALE)?;
     Ok(())
 }
 
@@ -417,10 +421,10 @@ mod tests {
     #[test]
     fn accessibility_text_scaling_preserves_css_viewport_on_both_displays() {
         let logical = panel_logical_size(380.0, 470.0, 1.2);
-        assert_eq!(panel_size(logical.width, logical.height, 1.75).width, 798);
-        assert_eq!(panel_size(logical.width, logical.height, 1.75).height, 987);
-        assert_eq!(panel_size(logical.width, logical.height, 1.5).width, 684);
-        assert_eq!(panel_size(logical.width, logical.height, 1.5).height, 846);
+        assert_eq!(panel_size(logical.width, logical.height, 1.75).width, 678);
+        assert_eq!(panel_size(logical.width, logical.height, 1.75).height, 839);
+        assert_eq!(panel_size(logical.width, logical.height, 1.5).width, 581);
+        assert_eq!(panel_size(logical.width, logical.height, 1.5).height, 719);
     }
 
     #[test]
