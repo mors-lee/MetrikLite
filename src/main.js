@@ -91,6 +91,7 @@ function setQuotaWindow(key, quota) {
   target.meter.style.width = `${remaining}%`;
   target.meter.classList.toggle("low", remaining <= 20);
   target.reset.textContent = formatReset(quota.resets_at_ms);
+  target.reset.title = target.reset.textContent;
 }
 
 function renderState(state) {

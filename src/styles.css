@@ -47,15 +47,15 @@ body {
   align-items: center;
 }
 
-.topbar { justify-content: space-between; gap: 10px; margin-bottom: 11px; }
-.brand { min-width: 0; flex: 1; gap: 11px; }
+.topbar { justify-content: space-between; gap: 8px; margin-bottom: 11px; }
+.brand { min-width: 0; flex: 1; gap: 8px; }
 .brand > div { min-width: 0; }
 .brand-icon {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   flex: 0 0 auto;
-  border-radius: 15px;
+  border-radius: 13px;
   box-shadow: 0 9px 20px rgba(42, 78, 157, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
@@ -90,16 +90,16 @@ h1 { font-size: 17px; font-weight: 720; letter-spacing: -0.35px; }
 .status-dot.error::after { background: #df605d; }
 .status-separator { color: #b0bac9; }
 
-.top-actions { flex: 0 0 auto; gap: 7px; }
+.top-actions { flex: 0 0 auto; gap: 5px; }
 .icon-button {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   flex: 0 0 auto;
   padding: 0;
   place-items: center;
   border: 1px solid rgba(126, 145, 177, 0.16);
-  border-radius: 12px;
+  border-radius: 10px;
   color: #53647f;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: 0 3px 10px rgba(51, 72, 109, 0.045), inset 0 1px 0 rgba(255, 255, 255, 0.8);

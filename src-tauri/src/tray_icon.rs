@@ -420,10 +420,10 @@ mod tests {
 
     #[test]
     fn accessibility_text_scaling_preserves_css_viewport_on_both_displays() {
-        let logical = panel_logical_size(380.0, 470.0, 1.2);
-        assert_eq!(panel_size(logical.width, logical.height, 1.75).width, 678);
+        let logical = panel_logical_size(320.0, 470.0, 1.2);
+        assert_eq!(panel_size(logical.width, logical.height, 1.75).width, 571);
         assert_eq!(panel_size(logical.width, logical.height, 1.75).height, 839);
-        assert_eq!(panel_size(logical.width, logical.height, 1.5).width, 581);
+        assert_eq!(panel_size(logical.width, logical.height, 1.5).width, 490);
         assert_eq!(panel_size(logical.width, logical.height, 1.5).height, 719);
     }
 
