@@ -29,7 +29,7 @@ windows = { version = "0.61", features = [
   "Win32_Graphics_Gdi",
   "Win32_UI_WindowsAndMessaging",
 ] }
-winreg = "0.55"
+winreg = "0.56"
 
 [profile.release]
 codegen-units = 1
