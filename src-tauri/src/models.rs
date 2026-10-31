@@ -27,7 +27,7 @@ impl AppPayload {
         Self {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             status: "connecting".into(),
-            status_text: "正在连接 Codex…".into(),
+            status_text: "正在读取桌面端…".into(),
             error_message: None,
             windows: Vec::new(),
             tray_percent: None,
@@ -38,6 +38,7 @@ impl AppPayload {
     pub fn ready(mut windows: Vec<QuotaWindow>) -> Self {
         windows.sort_by_key(|item| if item.window_key == "primary" { 0 } else { 1 });
         let now = chrono::Utc::now().timestamp_millis();
+        let recorded_at = windows.iter().map(|window| window.collected_at_ms).max();
         // 托盘数字固定显示短时窗口（Codex 当前为 5 小时窗口），
         // 每周窗口通过悬停提示和主面板查看。
         let tray_percent = windows
@@ -51,11 +52,11 @@ impl AppPayload {
         Self {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             status: "ready".into(),
-            status_text: "已连接".into(),
+            status_text: "桌面端缓存".into(),
             error_message: None,
             windows,
             tray_percent,
-            refreshed_at_ms: Some(now),
+            refreshed_at_ms: recorded_at,
         }
     }
 
@@ -63,7 +64,7 @@ impl AppPayload {
         Self {
             version: env!("CARGO_PKG_VERSION").to_owned(),
             status: "error".into(),
-            status_text: "Codex 暂不可用".into(),
+            status_text: "暂无桌面端配额".into(),
             error_message: Some(message.into()),
             windows: Vec::new(),
             tray_percent: None,
@@ -92,5 +93,6 @@ mod tests {
     fn tray_uses_five_hour_window_only() {
         let payload = AppPayload::ready(vec![window("primary", 8.0), window("secondary", 63.0)]);
         assert_eq!(payload.tray_percent, Some(8));
+        assert_eq!(payload.refreshed_at_ms, Some(1_800_000_000_000));
     }
 }

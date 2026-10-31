@@ -33,7 +33,7 @@
 
 ### 推荐：NSIS 安装向导
 
-> **[立即下载 MetrikLite v2.0.10](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.10/MetrikLite_2.0.10_x64-setup.exe)**
+> **[立即下载 MetrikLite v2.0.11](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.11/MetrikLite_2.0.11_x64-setup.exe)**
 
 也可以前往 [Latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) 获取当前最新版：
 
@@ -50,7 +50,7 @@
 ### 安装与首次使用
 
 1. 下载上方的 `MetrikLite_*_x64-setup.exe` 并运行安装向导。
-2. 启动 MetrikLite，确认本机已经安装并登录独立 Codex CLI。
+2. 在 Codex 桌面端使用一次，再启动 MetrikLite 读取桌面端配额缓存。
 3. 查看 Windows 托盘数字（显示 5 小时窗口剩余百分比）；左键点击数字打开同时显示 5 小时和 1 周窗口的配额面板，右键点击打开功能菜单。
 4. 在主面板中调整刷新间隔或开机自启后点击“保存”；也可以点击顶部刷新按钮立即更新配额。
 
@@ -86,24 +86,24 @@
 | 想看配额，却要先打开 Codex | 托盘数字持续显示 5 小时剩余百分比，鼠标悬停即可查看 5 小时和 1 周用量 |
 | 需要同时掌握短时和每周窗口 | 托盘显示 5 小时窗口，主面板和悬停提示同时显示两个窗口 |
 | 托盘数字太小、不同位数难辨认 | `0`–`100` 自动缩放并居中，剩余不高于 20% 时显示红色 |
-| 不同电脑上的 Codex 路径不一致 | 自动查找 CLI，不需要手动指定路径 |
+| 不想单独配置 CLI | 只读取桌面端生成的配额缓存，不启动独立 CLI |
 | 面板经常挡住任务栏或跑到错误的屏幕 | 面板按当前鼠标所在显示器的工作区定位，支持多显示器和高 DPI |
-| 不想把账号数据交给第三方服务 | 复用本机 Codex app-server；MetrikLite 没有自己的账户、云服务、分析或广告 SDK |
+| 不想把账号数据交给第三方服务 | 只读本机桌面端缓存；MetrikLite 没有自己的账户、云服务、分析或广告 SDK |
 
-## 一次连接，托盘实时显示
+## 桌面端配额缓存，托盘显示
 
 ```mermaid
 flowchart LR
     A["Windows 启动 / 托盘点击"] --> B["MetrikLite"]
-    B --> C["自动查找 Codex CLI<br/>环境变量 · WinGet · npm · PATH"]
-    C --> D["本机 codex app-server<br/>JSON-RPC stdout"]
-    D --> E["account/rateLimits/read"]
+    B --> C["本机 .codex/sessions"]
+    C --> D["仅接受 Codex Desktop 来源"]
+    D --> E["token_count 配额记录"]
     E --> F["5 小时配额 · 每周配额 · 重置时间"]
     F --> G["托盘数字 · 双窗口配额面板"]
     B -.-> H["用户主动检查更新<br/>api.github.com"]
 ```
 
-CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新失败时不会让托盘程序消失，而是保留 `!` 状态和可操作的主面板。
+配额随桌面端写入记录而更新，并非独立实时请求。面板的更新时间使用记录本身的时间，不使用轮询时间；已过重置时间的窗口不沿用旧百分比。没有有效桌面端记录时显示 `!`，不会回退到 CLI。
 
 ## 核心能力
 
@@ -123,31 +123,24 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 - 面板锚定当前显示器工作区右下角，尽量避开任务栏；空间不足时回退到工作区左上角。
 - 支持常规 Windows 缩放、多显示器和高 DPI 环境。
 
-### 连接本机 Codex，而不是另建一套账户系统
+### 只读 Codex 桌面端配额
 
-- 通过 Codex CLI 的 `app-server` 接口读取配额窗口。
-- 使用 JSON-RPC 请求 `account/rateLimits/read` 获取实时数据。
-- Codex CLI 路径不变时复用已有会话，减少反复启动进程。
-- 退出时先正常关闭标准输入并等待进程结束，超时后才终止直接子进程。
-- MetrikLite 不读取 Codex 凭据文件，也不读取对话、提示词、回答或项目内容；登录仍由 Codex CLI 自己负责。
+- 只接受会话元数据中来源为 `Codex Desktop`、且不是 `cli` 的记录。
+- 从 `token_count` 事件中提取配额百分比、窗口时长、重置时间和记录时间。
+- 不启动 Codex CLI，不读取 API Key、`auth.json` 或系统凭据库。
+- 缓存更新依赖桌面端活动；请先在桌面端使用一次，再刷新面板。
 
-### 自动查找 Codex CLI
+### 桌面端缓存目录
 
-默认按以下顺序寻找 Codex CLI：
+默认读取当前用户目录下的 `.codex/sessions`。只解析来源元数据和配额事件，跳过 CLI 来源；不使用 `CODEX_BINARY`、WinGet、npm、`PATH` 或 CLI 的 `CODEX_HOME` 覆盖。
 
-1. `CODEX_BINARY` 环境变量。
-2. 官方 WinGet `OpenAI.Codex_*` 包中的原生 Windows EXE。
-3. `%APPDATA%\npm\codex.cmd`。
-4. `PATH` 中可用的 Codex CLI。
-
-受保护的 `WindowsApps` 内置路径和已知的同名第三方启动器会被跳过，避免误用错误的程序。
 
 ### 轻量配置，保持在本机
 
 - 默认每 30 秒刷新一次，可调整为 10–300 秒。
 - 可选当前用户开机自启，不需要管理员权限。
 - 支持浅色与苹果风格深色主题，主题选择保存在本机。
-- 配置、日志和 Codex 运行时目录均位于本机用户目录。
+- 配置和日志位于本机用户目录。
 
 ## 刷新、配置与本地文件
 
@@ -156,7 +149,6 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 ```text
 %APPDATA%\MetrikLite\config.json
 %APPDATA%\MetrikLite\metriklite.log
-%LOCALAPPDATA%\MetrikLite\Runtime
 ```
 
 开机自启只写入当前用户注册表：
@@ -165,25 +157,25 @@ CLI 路径不变时，MetrikLite 会复用同一个 app-server 进程。刷新�
 HKCU\Software\Microsoft\Windows\CurrentVersion\Run\MetrikLite
 ```
 
-关闭面板不会退出程序；退出托盘菜单中的“退出”才会关闭 MetrikLite 及其 Codex app-server 会话。
+关闭面板不会退出程序；托盘菜单中的“退出”关闭 MetrikLite，不影响 Codex 桌面端。
 
 ## 隐私与联网范围
 
 ### MetrikLite 会读取
 
 - MetrikLite 自己的本地配置和日志目录。
-- 自动找到的 Codex CLI 文件路径。
-- Codex app-server 返回的 5 小时和 1 周配额百分比、窗口时长和重置时间。
+- 桌面端会话日志的来源元数据与配额事件；读取文件开头及有界尾部，不解析对话正文。
+- 桌面端记录的 5 小时和 1 周配额百分比、窗口时长、重置时间和记录时间。
 - Windows 字体目录中的 Segoe UI Semibold/Bold，仅用于渲染托盘数字。
 
 ### MetrikLite 不会读取
 
-- Codex 对话、提示词、回答或聊天历史。
+- 不解析、显示或上传 Codex 对话、提示词、回答正文。
 - 项目源码、Git 仓库内容、文档或剪贴板。
 - GitHub 密码、验证码、Token 或 Codex 凭据文件内容。
 - 浏览器 Cookie、历史记录或保存的密码。
 
-Codex 登录和它为获取账户配额而进行的 OpenAI 通信由 Codex CLI 自己负责；这些通信不经过 MetrikLite 服务器。MetrikLite 没有自己的云服务、用户账户、分析服务或广告 SDK。
+配额来自桌面端本地缓存，MetrikLite 不发起 OpenAI 认证或配额请求，不访问 CLI 凭据。MetrikLite 没有自己的云服务、用户账户、分析服务或广告 SDK。
 
 ### MetrikLite 自身请求的域名
 
@@ -240,7 +232,7 @@ cargo clippy --manifest-path src-tauri\Cargo.toml --locked --all-targets -- -D w
 ```text
 src/                         无框架 HTML/CSS/JavaScript 面板
 src-tauri/src/main.rs        Tauri 生命周期、托盘菜单与前端命令
-src-tauri/src/codex.rs       持久 Codex JSON-RPC 会话与配额读取
+src-tauri/src/codex.rs       桌面端来源过滤与本地配额缓存读取
 src-tauri/src/models.rs      配额状态与 5 小时托盘选择逻辑
 src-tauri/src/tray_icon.rs   数字渲染、缩放与面板定位
 src-tauri/src/config.rs      配置持久化与当前用户开机自启

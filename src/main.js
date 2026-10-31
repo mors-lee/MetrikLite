@@ -107,10 +107,13 @@ function renderState(state) {
   elements.content.classList.toggle("hidden", !hasQuota);
   elements.empty.classList.toggle("hidden", hasQuota);
   elements.emptyMessage.textContent = state.error_message
-    || (state.status === "ready" ? "Codex 当前未提供可用配额窗口。" : "请确认已安装并登录独立 Codex CLI。");
+    || "请先在 Codex 桌面端使用一次，再刷新配额缓存。";
   elements.updatedAt.textContent = state.refreshed_at_ms
     ? `更新于 ${new Date(state.refreshed_at_ms).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}`
     : "等待更新";
+  elements.updatedAt.title = state.refreshed_at_ms
+    ? `桌面端配额记录时间：${new Date(state.refreshed_at_ms).toLocaleString("zh-CN")}`
+    : "等待桌面端写入配额记录";
 }
 
 function applyTheme(theme) {

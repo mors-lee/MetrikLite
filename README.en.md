@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>See your Codex 5-hour and weekly quota directly in the Windows tray.</strong><br />
-  Lightweight, native, and local-first. It does not read conversations or project files.
+  Lightweight, native, and local-first. Reads desktop quota records without CLI credentials.
 </p>
 
 <p align="center">
@@ -47,8 +47,8 @@ MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Window
 - Hover text lists the 5-hour and weekly remaining percentages with reset times.
 - One-page panel showing both the 5-hour and weekly quota windows plus embedded preferences, anchored to the active monitor work area.
 - Multi-monitor and high-DPI aware positioning with complete rounded corners.
-- One persistent local Codex app-server session reused across refreshes.
-- Current-user autostart, manual refresh, automatic CLI discovery, and update checks.
+- Reads cached quota events written by Codex Desktop; timestamps reflect the original record.
+- Current-user autostart, manual refresh, desktop-only source filtering, and update checks.
 - Light and Apple-inspired dark themes, persisted locally with the other preferences.
 - Rust + Tauri 2; the official NSIS installer is approximately 1.3 MB.
 
@@ -56,7 +56,7 @@ MetrikLite renders the Codex **5-hour remaining percentage** as a numeric Window
 
 ## Download
 
-[Download the MetrikLite v2.0.10 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.10/MetrikLite_2.0.10_x64-setup.exe)
+[Download the MetrikLite v2.0.11 installer](https://github.com/mors-lee/MetrikLite/releases/download/v2.0.11/MetrikLite_2.0.11_x64-setup.exe)
 
 The [latest Release](https://github.com/mors-lee/MetrikLite/releases/latest) contains:
 
@@ -73,7 +73,7 @@ Windows 10/11 x64 is supported. If Microsoft Edge WebView2 Runtime is missing, t
 ## First run
 
 1. Install and launch MetrikLite.
-2. If an independent Codex CLI is installed and signed in, the tray shows the 5-hour remaining percentage.
+2. Use Codex Desktop once so it writes a quota record; the tray then shows its cached 5-hour remaining percentage.
 3. Hover over the number for both windows; left-click for the dual-window panel; right-click for refresh, updates, downloads, and exit.
 4. Adjust the refresh interval or autostart in the main panel and click **Save** when needed.
 
@@ -104,25 +104,24 @@ The default refresh interval is 30 seconds and can be configured from 10 to 300 
 ```text
 %APPDATA%\MetrikLite\config.json
 %APPDATA%\MetrikLite\metriklite.log
-%LOCALAPPDATA%\MetrikLite\Runtime
 ```
 
-## Codex discovery
+## Desktop quota cache
 
-MetrikLite checks `CODEX_BINARY`, official `OpenAI.Codex_*` WinGet packages, `%APPDATA%\npm\codex.cmd`, and then `PATH`. Protected WindowsApps paths and known unrelated launchers are skipped.
+MetrikLite reads the standard `.codex/sessions` directory under the current user's home. Only `Codex Desktop` source metadata and `token_count` quota events are accepted; CLI-origin records are excluded. It never starts a CLI or uses CLI binary/home overrides. Cache updates depend on desktop activity, not independent live requests. Expired quota windows are excluded.
 
 ## Privacy and network access
 
-MetrikLite reads only its own local configuration, an automatically discovered Codex CLI path, quota data returned by Codex app-server, and Segoe UI font data used to render the tray number.
+MetrikLite reads its own configuration, bounded headers/tails of desktop session logs for source metadata and quota events, and Segoe UI font data used to render the tray number.
 
-It does **not** read Codex conversations, prompts, responses, project files, repositories, clipboard data, browser data, GitHub credentials, or Codex credential-file contents. MetrikLite never reads sensitive credentials, so no credential-access switch is required; Codex CLI owns authentication.
+It does not parse, display, or upload conversation bodies. It does not access project files, repositories, clipboard/browser data, API keys, `auth.json`, GitHub credentials, or OS credential stores. There is no fallback to CLI authentication.
 
 | Domain | When | Purpose |
 | --- | --- | --- |
 | `api.github.com` | Only after **Check for updates** | Public Release metadata |
 | `github.com` | After the user opens downloads | Release page in the default browser |
 
-OpenAI traffic used by Codex CLI to read account quota belongs to Codex itself and does not pass through a MetrikLite server. MetrikLite has no cloud service, analytics service, or advertising SDK.
+MetrikLite does not make OpenAI authentication or quota requests. It has no cloud service, analytics service, or advertising SDK.
 
 ## Build from source
 

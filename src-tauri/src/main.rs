@@ -24,7 +24,7 @@ static PANEL_LAYOUT_REVISION: AtomicU64 = AtomicU64::new(0);
 struct AppCore {
     config: RwLock<AppConfig>,
     payload: RwLock<AppPayload>,
-    codex: Mutex<codex::CodexManager>,
+    codex: Mutex<codex::DesktopQuotaReader>,
     refresh_gate: Mutex<()>,
 }
 
@@ -58,19 +58,6 @@ async fn save_config(
     update_tray(&app, &payload, normalized.light_glyphs);
     logging::info("configuration saved");
     Ok(normalized)
-}
-
-#[tauri::command]
-async fn choose_codex_binary() -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(|| {
-        rfd::FileDialog::new()
-            .set_title("选择独立 Codex CLI")
-            .add_filter("Codex CLI", &["exe", "cmd", "bat"])
-            .pick_file()
-            .map(|path| path.to_string_lossy().into_owned())
-    })
-    .await
-    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -110,7 +97,7 @@ async fn refresh_application(app: &AppHandle) -> AppPayload {
     let state = app.state::<AppCore>();
     let _refresh_guard = state.refresh_gate.lock().await;
     let configuration = state.config.read().await.clone();
-    let result = state.codex.lock().await.read(None).await;
+    let result = state.codex.lock().await.read().await;
     let payload = match result {
         Ok(windows) => AppPayload::ready(windows),
         Err(error) => {
@@ -152,7 +139,7 @@ fn tray_tooltip(payload: &AppPayload) -> String {
         return "MetrikLite：点击查看 Codex 配额".into();
     }
 
-    let mut lines = vec!["剩余用量".to_string()];
+    let mut lines = vec!["剩余用量（桌面端缓存）".to_string()];
     lines.push(format_tray_window("5 小时", primary));
     lines.push(format_tray_window("1 周", secondary));
     lines.join("\n")
@@ -319,8 +306,6 @@ fn start_refresh_loop(app: AppHandle) {
 }
 
 async fn shutdown_and_exit(app: AppHandle) {
-    let state = app.state::<AppCore>();
-    state.codex.lock().await.shutdown().await;
     logging::info("MetrikLite exiting");
     app.exit(0);
 }
@@ -341,7 +326,7 @@ fn main() {
             app.manage(AppCore {
                 config: RwLock::new(configuration),
                 payload: RwLock::new(AppPayload::connecting()),
-                codex: Mutex::new(codex::CodexManager::new()),
+                codex: Mutex::new(codex::DesktopQuotaReader::new()),
                 refresh_gate: Mutex::new(()),
             });
             setup_tray(app)?;
@@ -374,7 +359,6 @@ fn main() {
             get_config,
             refresh_now,
             save_config,
-            choose_codex_binary,
             open_url,
             hide_panel,
             set_panel_content_height,

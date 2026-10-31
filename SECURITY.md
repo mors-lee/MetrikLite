@@ -22,4 +22,4 @@ Public builds are currently not Authenticode-signed. SmartScreen reputation, cod
 
 ## Data boundaries
 
-MetrikLite reads local preferences and Codex rate-limit responses. It does not read conversations, project files, browser storage, GitHub credentials, or Codex credential-file contents. Update checks are user initiated and use only public GitHub Release metadata.
+MetrikLite reads local preferences and bounded headers/tails of desktop session logs to identify Codex Desktop sources and extract quota events. It does not parse, display, or upload conversation bodies. It does not start a Codex CLI, fall back to CLI authentication, or access API keys, `auth.json`, OS credential stores, project files, browser storage, or GitHub credentials. Cache timestamps are the original desktop record times, not polling times. Update checks are user initiated and use only public GitHub Release metadata.

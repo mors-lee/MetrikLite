@@ -32,8 +32,8 @@ impl Default for AppConfig {
 impl AppConfig {
     pub fn normalize(mut self) -> Self {
         self.refresh_seconds = self.refresh_seconds.clamp(10, 300);
-        // Codex CLI is resolved automatically; keep these fields only so older
-        // config files can still be deserialized without a migration step.
+        // Desktop-only quota reading ignores legacy CLI fields. Retain them
+        // only so older config files deserialize without a migration step.
         self.codex_binary_path = None;
         self.light_glyphs = false;
         if self.theme != "dark" {
